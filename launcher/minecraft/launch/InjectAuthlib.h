@@ -28,6 +28,9 @@ class InjectAuthlib : public LaunchStep {
     //! JVM arguments as described in the authlib-injector launcher technical specification
     static QStringList buildJvmArguments(const QString& jarPath, const QString& apiUrl, const QByteArray& apiMetadata);
 
+    //! Copy of JVM arguments for logging, with the long prefetched metadata abbreviated
+    static QStringList describeJvmArguments(const QStringList& args);
+
    private:
     static QString cacheDirectory();
 

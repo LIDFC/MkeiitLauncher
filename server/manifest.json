@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "name": "Our Server",
+  "packVersion": "1.0.0",
+  "server": {
+    "address": "",
+    "port": 25565
+  },
+  "minecraft": "1.21.11",
+  "loader": {
+    "type": "fabric",
+    "version": "0.19.5"
+  },
+  "mods": [
+    {
+      "name": "Fabric API",
+      "source": "modrinth",
+      "project": "P7dR8mSH",
+      "versionId": "6qAuTtLR",
+      "sha512": "852d3682c4f353fd0ca86546af8578513e8bcf628377fa9d49c556bc59c5024c69ab56c92fc6dfba11fed19e4316a3f5636e7e07fd3d96f7043b531aef59b637"
+    }
+  ]
+}

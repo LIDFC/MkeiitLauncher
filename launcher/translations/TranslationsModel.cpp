@@ -48,6 +48,7 @@
 #include "net/NetJob.h"
 
 #include "POTranslator.h"
+#include "ourserver/OurServerTranslator.h"
 
 #include "Application.h"
 #include "settings/SettingsObject.h"
@@ -166,6 +167,7 @@ struct TranslationsModel::Private {
     QString m_selectedLanguage = g_defaultLangCode;
     std::unique_ptr<QTranslator> m_qtTranslator;
     std::unique_ptr<QTranslator> m_appTranslator;
+    std::unique_ptr<QTranslator> m_ourServerTranslator;
 
     Net::Request* m_indexTask = nullptr;
     QString m_downloadingTranslation;
@@ -469,6 +471,10 @@ bool TranslationsModel::selectLanguage(QString key) const
         QCoreApplication::removeTranslator(d->m_qtTranslator.get());
         d->m_qtTranslator.reset();
     }
+    if (d->m_ourServerTranslator) {
+        QCoreApplication::removeTranslator(d->m_ourServerTranslator.get());
+        d->m_ourServerTranslator.reset();
+    }
 
     /*
      * FIXME: potential source of crashes:
@@ -530,6 +536,17 @@ bool TranslationsModel::selectLanguage(QString key) const
     } else {
         d->m_appTranslator.reset();
     }
+
+    // the "Our Server" strings are not part of the downloaded translation files
+    if (OurServerTranslator::supportsLanguage(langCode)) {
+        d->m_ourServerTranslator = std::make_unique<OurServerTranslator>();
+        if (QCoreApplication::installTranslator(d->m_ourServerTranslator.get())) {
+            successful = true;
+        } else {
+            d->m_ourServerTranslator.reset();
+        }
+    }
+
     d->m_selectedLanguage = langCode;
     return successful;
 }

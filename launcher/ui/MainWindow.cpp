@@ -67,6 +67,7 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QShortcut>
+#include <QStackedWidget>
 #include <QStatusBar>
 #include <QToolBar>
 #include <QToolButton>
@@ -109,6 +110,7 @@
 #include "ui/instanceview/InstanceDelegate.h"
 #include "ui/instanceview/InstanceProxyModel.h"
 #include "ui/instanceview/InstanceView.h"
+#include "ui/pages/ourserver/OurServerPage.h"
 #include "ui/themes/ITheme.h"
 #include "ui/themes/ThemeManager.h"
 #include "ui/widgets/LabeledToolButton.h"
@@ -332,7 +334,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
         view->setSourceOfGroupCollapseStatus(
             [](const QString& groupName) -> bool { return APPLICATION->instances()->isGroupCollapsed(groupName); });
         connect(view, &InstanceView::groupStateChanged, APPLICATION->instances(), &InstanceList::on_GroupStateChanged);
-        ui->horizontalLayout->addWidget(view);
+        // the "Our Server" category shares the main area with the instance list
+        m_centralStack = new QStackedWidget(ui->centralWidget);
+        m_centralStack->addWidget(view);
+        m_ourServerPage = new OurServerPage(m_centralStack);
+        m_centralStack->addWidget(m_ourServerPage);
+        ui->horizontalLayout->addWidget(m_centralStack);
     }
     // The cat background
     {
@@ -1590,6 +1597,19 @@ void MainWindow::closeEvent(QCloseEvent* event)
     instanceToolbarSetting->set(QString::fromUtf8(ui->instanceToolBar->getVisibilityState().toBase64()));
     event->accept();
     emit isClosing();
+}
+
+void MainWindow::on_actionOurServer_toggled(bool checked)
+{
+    if (checked) {
+        // the instance toolbar acts on the selected instance, which is not visible in this category
+        ui->instanceToolBar->setEnabled(false);
+        m_centralStack->setCurrentWidget(m_ourServerPage);
+        m_ourServerPage->opened();
+    } else {
+        m_centralStack->setCurrentWidget(view);
+        refreshCurrentInstance();
+    }
 }
 
 void MainWindow::changeEvent(QEvent* event)

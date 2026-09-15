@@ -50,6 +50,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionAddInstance"/>
+   <addaction name="actionOurServer"/>
    <addaction name="separator"/>
    <addaction name="actionFoldersButton"/>
    <addaction name="actionSettings"/>
@@ -281,6 +282,20 @@
    </property>
    <property name="text">
     <string>&amp;Undo Last Instance Deletion</string>
+   </property>
+  </action>
+  <action name="actionOurServer">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="server"/>
+   </property>
+   <property name="text">
+    <string>&amp;Our Server</string>
+   </property>
+   <property name="toolTip">
+    <string>Play on the server of our group</string>
    </property>
   </action>
   <action name="actionAddInstance">

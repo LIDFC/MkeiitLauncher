@@ -896,6 +896,10 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
         // Custom Ely.by OAuth2 Client ID
         m_settings->registerSetting("ElyByClientIDOverride", "");
 
+        // Our Server: overrides for the manifest URL and the server address (host or host:port)
+        m_settings->registerSetting("OurServerManifestURLOverride", "");
+        m_settings->registerSetting("OurServerAddressOverride", "");
+
         // Custom Flame API Key
         m_settings->registerSetting({ "FlameKeyOverride", "CFKeyOverride" }, "");
 

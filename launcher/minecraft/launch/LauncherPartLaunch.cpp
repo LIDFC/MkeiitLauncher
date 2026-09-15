@@ -42,6 +42,7 @@
 #include "FileSystem.h"
 #include "launch/LaunchTask.h"
 #include "minecraft/MinecraftInstance.h"
+#include "minecraft/launch/InjectAuthlib.h"
 
 #ifdef Q_OS_LINUX
 #include "gamemode_client.h"
@@ -93,13 +94,14 @@ void LauncherPartLaunch::executeTask()
 
     m_launchScript = instance->createLaunchScript(m_session, m_targetToJoin);
     QStringList args = instance->javaArguments();
-    QString allArgs = args.join(" ");
-    emit logLine("Java arguments:\n  " + m_parent->censorPrivateInfo(allArgs) + "\n", MessageLevel::Launcher);
 
     // prepared by the InjectAuthlib step for sessions of online accounts (e.g. Ely.by)
     if (m_session && !m_session->authlibInjectorJvmArgs.isEmpty()) {
         args.append(m_session->authlibInjectorJvmArgs);
     }
+
+    QString allArgs = InjectAuthlib::describeJvmArguments(args).join(" ");
+    emit logLine("Java arguments:\n  " + m_parent->censorPrivateInfo(allArgs) + "\n", MessageLevel::Launcher);
 
     auto javaPath = FS::ResolveExecutable(instance->settings()->get("JavaPath").toString());
 

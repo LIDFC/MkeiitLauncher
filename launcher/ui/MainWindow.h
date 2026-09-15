@@ -61,6 +61,8 @@ class InstanceView;
 class KonamiCode;
 class InstanceTask;
 class LabeledToolButton;
+class OurServerPage;
+class QStackedWidget;
 class Setting;
 
 namespace Ui {
@@ -96,6 +98,9 @@ class MainWindow : public QMainWindow {
     void on_actionAbout_triggered();
 
     void on_actionAddInstance_triggered();
+
+    //! switches the main area between the instance list and the "Our Server" category
+    void on_actionOurServer_toggled(bool checked);
 
     void on_actionREDDIT_triggered();
 
@@ -239,6 +244,8 @@ class MainWindow : public QMainWindow {
     InstanceView* view = nullptr;
     InstanceProxyModel* proxymodel = nullptr;
     QToolButton* newsLabel = nullptr;
+    QStackedWidget* m_centralStack = nullptr;
+    OurServerPage* m_ourServerPage = nullptr;
     QLabel* m_statusLeft = nullptr;
     QLabel* m_statusCenter = nullptr;
     LabeledToolButton* changeIconButton = nullptr;

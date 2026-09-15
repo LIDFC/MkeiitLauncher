@@ -18,6 +18,7 @@ namespace {
 // official download API, see https://github.com/yushijinhun/authlib-injector
 const QString LATEST_ARTIFACT_URL = QStringLiteral("https://authlib-injector.yushi.moe/artifact/latest.json");
 const QString DOWNLOAD_HOST = QStringLiteral("authlib-injector.yushi.moe");
+const QString PREFETCHED_ARGUMENT = QStringLiteral("-Dauthlibinjector.yggdrasil.prefetched=");
 
 QString fileSha256(const QString& path)
 {
@@ -39,9 +40,23 @@ QStringList InjectAuthlib::buildJvmArguments(const QString& jarPath, const QStri
 {
     QStringList args{ QString("-javaagent:%1=%2").arg(jarPath, apiUrl) };
     if (!apiMetadata.isEmpty()) {
-        args << "-Dauthlibinjector.yggdrasil.prefetched=" + QString::fromLatin1(apiMetadata.toBase64());
+        args << PREFETCHED_ARGUMENT + QString::fromLatin1(apiMetadata.toBase64());
     }
     return args;
+}
+
+QStringList InjectAuthlib::describeJvmArguments(const QStringList& args)
+{
+    QStringList out;
+    out.reserve(args.size());
+    for (const auto& arg : args) {
+        if (arg.startsWith(PREFETCHED_ARGUMENT)) {
+            out << PREFETCHED_ARGUMENT + QString("<%1 characters of prefetched metadata>").arg(arg.size() - PREFETCHED_ARGUMENT.size());
+        } else {
+            out << arg;
+        }
+    }
+    return out;
 }
 
 QString InjectAuthlib::cacheDirectory()

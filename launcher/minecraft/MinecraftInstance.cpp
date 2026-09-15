@@ -584,6 +584,11 @@ QStringList MinecraftInstance::javaArguments()
 
     args << "-Duser.language=en";
 
+    JavaVersion javaVersion = getJavaVersion();
+
+    // compatibility defaults go before the custom args, so they can still be overridden by the user
+    args.append(compatibilityJvmArguments(javaVersion));
+
     // custom args go first. we want to override them if we have our own here.
     args.append(extraArguments());
 
@@ -629,7 +634,6 @@ QStringList MinecraftInstance::javaArguments()
     }
 
     // No PermGen in newer java.
-    JavaVersion javaVersion = getJavaVersion();
     if (javaVersion.requiresPermGen()) {
         auto permgen = settings()->get("PermGen").toInt();
         if (permgen != 64) {
@@ -640,6 +644,20 @@ QStringList MinecraftInstance::javaArguments()
     if (javaVersion.isModular() && shouldApplyOnlineFixes())
         // allow reflective access to java.net - required by the skin fix
         args << "--add-opens" << "java.base/java.net=ALL-UNNAMED";
+
+    return args;
+}
+
+QStringList MinecraftInstance::compatibilityJvmArguments(const JavaVersion& javaVersion)
+{
+    QStringList args;
+
+    // Minecraft 26.3 (since snapshot 10) needs more stack headroom for calls into native code, otherwise the JVM can crash with
+    // EXCEPTION_ACCESS_VIOLATION (0xC0000005) in jvm.dll while loading resources. Mojang's version manifest passes this flag
+    // since then, together with the Java 25 runtime. It is limited to Java 25+, where the official launcher already uses it.
+    if (javaVersion.major() >= 25) {
+        args << "-XX:StackShadowPages=32";
+    }
 
     return args;
 }
@@ -897,6 +915,37 @@ QString MinecraftInstance::createLaunchScript(AuthSessionPtr session, MinecraftT
     return launchScript;
 }
 
+namespace {
+QString launchModeName(LaunchMode mode)
+{
+    switch (mode) {
+        case LaunchMode::Normal:
+            return "normal";
+        case LaunchMode::Offline:
+            return "offline";
+        case LaunchMode::Demo:
+            return "demo";
+    }
+    return "unknown";
+}
+
+// Copy of the session for logging: secrets are replaced by placeholders (the log censor filter also hides the profile ID)
+AuthSessionPtr makeDisplaySession(const AuthSessionPtr& session)
+{
+    if (!session) {
+        return nullptr;
+    }
+    auto display = std::make_shared<AuthSession>(*session);
+    if (!display->access_token.isEmpty() && display->access_token != "0") {
+        display->access_token = "<ACCESS TOKEN>";
+    }
+    if (!display->session.isEmpty() && display->session != "-") {
+        display->session = "<SESSION ID>";
+    }
+    return display;
+}
+}  // namespace
+
 QStringList MinecraftInstance::verboseDescription(AuthSessionPtr session, MinecraftTarget::Ptr targetToJoin)
 {
     constexpr auto indent = "  ";
@@ -1000,8 +1049,24 @@ QStringList MinecraftInstance::verboseDescription(AuthSessionPtr session, Minecr
 
     out << "Natives path:" << indent + getNativePath() << emptyLine;
 
-    // minecraft arguments
-    auto params = processMinecraftArgs(nullptr, targetToJoin);
+    // session, so launch problems can be told apart from authentication problems
+    if (session) {
+        out << "Session:";
+        out << indent + QString("Player name: %1").arg(session->player_name);
+        out << indent + QString("User type: %1").arg(session->user_type);
+        out << indent + QString("Launch mode: %1").arg(launchModeName(session->launchMode));
+        if (session->authlibInjectorApiUrl.isEmpty()) {
+            out << indent + QString("authlib-injector: not used");
+        } else {
+            out << indent + QString("authlib-injector: %1 (%2)")
+                                .arg(session->authlibInjectorApiUrl,
+                                     session->authlibInjectorJvmArgs.isEmpty() ? QString("not prepared") : QString("prepared"));
+        }
+        out << emptyLine;
+    }
+
+    // minecraft arguments, as passed to the game (with placeholders instead of secrets)
+    auto params = processMinecraftArgs(makeDisplaySession(session), targetToJoin);
     out << "Minecraft arguments:";
     out << indent + params.join(' ');
     out << emptyLine;

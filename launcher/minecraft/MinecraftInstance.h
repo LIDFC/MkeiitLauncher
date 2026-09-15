@@ -129,6 +129,8 @@ class MinecraftInstance : public BaseInstance {
     QString createLaunchScript(AuthSessionPtr session, MinecraftTarget::Ptr targetToJoin);
     /// get arguments passed to java
     QStringList javaArguments();
+    /// JVM arguments needed by current Minecraft versions, for the given Java version
+    static QStringList compatibilityJvmArguments(const JavaVersion& javaVersion);
     QString getLauncher();
     bool shouldApplyOnlineFixes();
 

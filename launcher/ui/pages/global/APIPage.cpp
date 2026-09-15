@@ -50,6 +50,7 @@
 #include "Application.h"
 #include "BuildConfig.h"
 #include "net/PasteUpload.h"
+#include "ourserver/ServerPackManifest.h"
 #include "settings/SettingsObject.h"
 #include "tools/BaseProfiler.h"
 
@@ -76,6 +77,9 @@ APIPage::APIPage(QWidget* parent) : QWidget(parent), ui(new Ui::APIPage)
     ui->resourceURL->setValidator(new QRegularExpressionValidator(s_validUrlRegExp, ui->resourceURL));
     ui->baseURLEntry->setValidator(new QRegularExpressionValidator(s_validUrlRegExp, ui->baseURLEntry));
     ui->legacyFMLLibsURL->setValidator(new QRegularExpressionValidator(s_validUrlRegExp, ui->legacyFMLLibsURL));
+    static const QRegularExpression s_validHttpsUrlRegExp("https://.+");
+    ui->ourServerManifestURL->setValidator(new QRegularExpressionValidator(s_validHttpsUrlRegExp, ui->ourServerManifestURL));
+    ui->ourServerManifestURL->setPlaceholderText(BuildConfig.OUR_SERVER_MANIFEST_URL);
 
     ui->metaURL->setPlaceholderText(BuildConfig.META_URL);
     ui->resourceURL->setPlaceholderText(BuildConfig.DEFAULT_RESOURCE_BASE);
@@ -152,6 +156,8 @@ void APIPage::loadSettings()
     QString customUserAgent = s->get("UserAgentOverride").toString();
     ui->userAgentLineEdit->setText(customUserAgent);
     ui->technicClientID->setText(s->get("TechnicClientID").toString());
+    ui->ourServerManifestURL->setText(s->get("OurServerManifestURLOverride").toString());
+    ui->ourServerAddress->setText(s->get("OurServerAddressOverride").toString());
 }
 
 void APIPage::applySettings()
@@ -201,6 +207,11 @@ void APIPage::applySettings()
     s->set("ModrinthToken", modrinthToken);
     s->set("UserAgentOverride", ui->userAgentLineEdit->text());
     s->set("TechnicClientID", ui->technicClientID->text());
+
+    // the server pack manifest is only ever fetched over HTTPS
+    const QString ourServerManifestURL = ui->ourServerManifestURL->text().trimmed();
+    s->set("OurServerManifestURLOverride", ServerPack::isSecureUrl(QUrl(ourServerManifestURL)) ? ourServerManifestURL : QString());
+    s->set("OurServerAddressOverride", ui->ourServerAddress->text().trimmed());
 }
 
 bool APIPage::apply()

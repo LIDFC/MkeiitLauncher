@@ -229,6 +229,55 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="groupBox_ourServer">
+         <property name="title">
+          <string>&amp;Our Server</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_ourServer">
+          <item>
+           <widget class="QLabel" name="ourServerManifestURLLabel">
+            <property name="text">
+             <string>Server pack manifest URL</string>
+            </property>
+            <property name="buddy">
+             <cstring>ourServerManifestURL</cstring>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="ourServerManifestURL"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="ourServerAddressLabel">
+            <property name="text">
+             <string>Server address</string>
+            </property>
+            <property name="buddy">
+             <cstring>ourServerAddress</cstring>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="ourServerAddress">
+            <property name="placeholderText">
+             <string>Use the address from the server pack manifest</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ourServerNote">
+            <property name="text">
+             <string>Leave these fields empty to use the defaults. The manifest URL must use HTTPS. The address can include a port, for example play.example.com:25565.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="QGroupBox" name="groupBox_msa">
          <property name="title">
           <string>&amp;API Keys</string>

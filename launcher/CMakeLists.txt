@@ -440,6 +440,27 @@ set(TRANSLATIONS_SOURCES
     translations/POTranslator.cpp
 )
 
+set(OURSERVER_SOURCES
+    ourserver/ModrinthResolver.cpp
+    ourserver/ModrinthResolver.h
+    ourserver/OurServerConfig.cpp
+    ourserver/OurServerConfig.h
+    ourserver/OurServerInstance.cpp
+    ourserver/OurServerInstance.h
+    ourserver/OurServerTranslator.cpp
+    ourserver/OurServerTranslator.h
+    ourserver/ServerPackLock.cpp
+    ourserver/ServerPackLock.h
+    ourserver/ServerPackLogging.cpp
+    ourserver/ServerPackLogging.h
+    ourserver/ServerPackManifest.cpp
+    ourserver/ServerPackManifest.h
+    ourserver/ServerPackPlan.cpp
+    ourserver/ServerPackPlan.h
+    ourserver/ServerPackTask.cpp
+    ourserver/ServerPackTask.h
+)
+
 set(TOOLS_SOURCES
     # Tools
     tools/BaseExternalTool.cpp
@@ -759,6 +780,7 @@ set(LOGIC_SOURCES
     ${PACKWIZ_SOURCES}
     ${TECHNIC_SOURCES}
     ${ATLAUNCHER_SOURCES}
+    ${OURSERVER_SOURCES}
 )
 
 if(APPLE AND Launcher_ENABLE_UPDATER)
@@ -885,6 +907,10 @@ SET(LAUNCHER_SOURCES
     ui/pages/instance/VersionPage.h
     ui/pages/instance/ManagedPackPage.cpp
     ui/pages/instance/ManagedPackPage.h
+
+    # GUI - "Our Server" category
+    ui/pages/ourserver/OurServerPage.cpp
+    ui/pages/ourserver/OurServerPage.h
     ui/pages/instance/DataPackPage.h
     ui/pages/instance/DataPackPage.cpp
     ui/pages/instance/TexturePackPage.h

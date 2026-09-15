@@ -110,6 +110,7 @@ Config::Config()
     HELP_URL = "@Launcher_HELP_URL@";
     IMGUR_CLIENT_ID = "@Launcher_IMGUR_CLIENT_ID@";
     ELYBY_CLIENT_ID = "@Launcher_ELYBY_CLIENT_ID@";
+    OUR_SERVER_MANIFEST_URL = "@Launcher_OUR_SERVER_MANIFEST_URL@";
     FLAME_API_KEY = "@Launcher_CURSEFORGE_API_KEY@";
     META_URL = "@Launcher_META_URL@";
     LEGACY_FMLLIBS_BASE_URL = "@Launcher_LEGACY_FMLLIBS_BASE_URL@";

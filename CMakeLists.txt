@@ -271,6 +271,10 @@ endif()
 # It can also be set at runtime in Settings > APIs.
 set(Launcher_ELYBY_CLIENT_ID "" CACHE STRING "Client ID you can get from Ely.by when you register an application")
 
+# "Our Server": default URL of the server pack manifest (HTTPS only). The server address and port are part of the manifest,
+# and players can override both in Settings > APIs without rebuilding the launcher. See docs/our-server.md.
+set(Launcher_OUR_SERVER_MANIFEST_URL "https://raw.githubusercontent.com/LIDFC/MkeiitLauncher/develop/server/manifest.json" CACHE STRING "URL of the Our Server pack manifest")
+
 # By using this key in your builds you accept the terms and conditions laid down in
 # https://support.curseforge.com/en/support/solutions/articles/9000207405-curse-forge-3rd-party-api-terms-and-conditions
 # NOTE: CurseForge requires you to change this if you make any kind of derivative work.

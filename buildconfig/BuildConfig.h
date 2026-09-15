@@ -149,6 +149,11 @@ class Config {
     QString ELYBY_CLIENT_ID;
 
     /**
+     * Default URL of the "Our Server" pack manifest
+     */
+    QString OUR_SERVER_MANIFEST_URL;
+
+    /**
      * Client API key for CurseForge
      */
     QString FLAME_API_KEY;
