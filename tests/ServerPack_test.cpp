@@ -5,8 +5,15 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkDatagram>
+#include <QSignalSpy>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QUdpSocket>
+#include <QtEndian>
+#include <memory>
 
 #include "modplatform/helpers/HashUtils.h"
 #include "ourserver/ModrinthResolver.h"
@@ -14,6 +21,8 @@
 #include "ourserver/ServerPackLock.h"
 #include "ourserver/ServerPackManifest.h"
 #include "ourserver/ServerPackPlan.h"
+#include "ourserver/ServerStatus.h"
+#include "ourserver/ServerStatusTask.h"
 
 using namespace ServerPack;
 
@@ -44,6 +53,109 @@ class ServerPackTest : public QObject {
                             { "minecraft", "1.21.11" },
                             { "loader", QJsonObject{ { "type", "fabric" }, { "version", "0.19.5" } } },
                             { "mods", mods } };
+    }
+
+    static QByteArray framedPacket(qint32 id, const QByteArray& payload)
+    {
+        QByteArray body;
+        ServerStatus::writeVarInt(body, id);
+        body.append(payload);
+        QByteArray packet;
+        ServerStatus::writeVarInt(packet, static_cast<qint32>(body.size()));
+        packet.append(body);
+        return packet;
+    }
+
+    static QByteArray statusPayload(const QJsonObject& status)
+    {
+        const auto json = toJson(status);
+        QByteArray payload;
+        ServerStatus::writeVarInt(payload, static_cast<qint32>(json.size()));
+        payload.append(json);
+        return payload;
+    }
+
+    static QJsonObject statusJson(int online, int max, const QStringList& names)
+    {
+        QJsonArray sample;
+        for (int i = 0; i < names.size(); i++) {
+            sample.append(
+                QJsonObject{ { "name", names[i] }, { "id", QString("00000000-0000-3000-8000-%1").arg(i + 1, 12, 10, QChar('0')) } });
+        }
+        return QJsonObject{ { "version", QJsonObject{ { "name", "Paper 1.21.11" }, { "protocol", 774 } } },
+                            { "players", QJsonObject{ { "online", online }, { "max", max }, { "sample", sample } } },
+                            { "description", QJsonObject{ { "text", "Our Server" } } } };
+    }
+
+    static QStringList playerNames(int count)
+    {
+        QStringList names;
+        for (int i = 1; i <= count; i++) {
+            names << QString("Player%1").arg(i);
+        }
+        return names;
+    }
+
+    static QByteArray int32Bytes(qint32 value)
+    {
+        QByteArray data(4, '\0');
+        qToBigEndian(value, data.data());
+        return data;
+    }
+
+    static QByteArray cString(const QByteArray& value) { return value + QByteArray(1, '\0'); }
+
+    static QByteArray queryHandshakeResponse(qint32 sessionId, const QByteArray& token)
+    {
+        return QByteArray(1, '\x09') + int32Bytes(sessionId) + cString(token);
+    }
+
+    static QByteArray queryStatResponse(qint32 sessionId, int online, int max, const QStringList& names)
+    {
+        QByteArray data = QByteArray(1, '\0') + int32Bytes(sessionId) + QByteArray::fromHex("73706c69746e756d008000");
+        const QList<std::pair<QByteArray, QByteArray>> values = { { "hostname", "A Minecraft Server" },
+                                                                  { "gametype", "SMP" },
+                                                                  { "game_id", "MINECRAFT" },
+                                                                  { "version", "1.21.11" },
+                                                                  { "plugins", "Paper on 1.21.11" },
+                                                                  { "map", "world" },
+                                                                  { "numplayers", QByteArray::number(online) },
+                                                                  { "maxplayers", QByteArray::number(max) },
+                                                                  { "hostport", "25565" },
+                                                                  { "hostip", "127.0.0.1" } };
+        for (const auto& [key, value] : values) {
+            data += cString(key) + cString(value);
+        }
+        data += QByteArray(1, '\0') + QByteArray::fromHex("01706c617965725f0000");
+        for (const auto& name : names) {
+            data += cString(name.toUtf8());
+        }
+        data += QByteArray(1, '\0');
+        return data;
+    }
+
+    //! a minimal Minecraft server that answers Server List Ping
+    static void serveStatus(QTcpServer& server, const QJsonObject& status)
+    {
+        QObject::connect(&server, &QTcpServer::newConnection, &server, [&server, status] {
+            auto* socket = server.nextPendingConnection();
+            auto buffer = std::make_shared<QByteArray>();
+            QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket, buffer, status] {
+                buffer->append(socket->readAll());
+                while (true) {
+                    const auto packet = ServerStatus::readPacket(*buffer);
+                    if (packet.state != ServerStatus::ReadState::Complete) {
+                        return;
+                    }
+                    buffer->remove(0, packet.size);
+                    if (packet.id == 0x00 && packet.payload.isEmpty()) {
+                        socket->write(framedPacket(0x00, statusPayload(status)));
+                    } else if (packet.id == 0x01) {
+                        socket->write(framedPacket(0x01, packet.payload));
+                    }
+                }
+            });
+        });
     }
 
     static QJsonObject versionJson(const QString& id, const QString& project, const QString& fileName, const QString& sha512)
@@ -145,7 +257,20 @@ class ServerPackTest : public QObject {
         QVERIFY(parsed.has_value());
         QVERIFY(parsed->serverAddress.isEmpty());
         QCOMPARE(parsed->serverPort, DEFAULT_SERVER_PORT);
+        QCOMPARE(parsed->queryPort, 0);
         QVERIFY(parsed->mods.isEmpty());
+    }
+
+    void test_parseManifestQueryPort()
+    {
+        auto json = manifestJson(QJsonArray{});
+        QCOMPARE(parseManifest(toJson(json))->queryPort, 0);
+
+        json["server"] = QJsonObject{ { "address", "play.example.com" }, { "port", 25565 }, { "queryPort", 25575 } };
+        const auto parsed = parseManifest(toJson(json));
+        QVERIFY(parsed.has_value());
+        QCOMPARE(parsed->serverPort, 25565);
+        QCOMPARE(parsed->queryPort, 25575);
     }
 
     void test_invalidManifest_data()
@@ -175,6 +300,10 @@ class ServerPackTest : public QObject {
         json = manifestJson(QJsonArray{ validMod });
         json["server"] = QJsonObject{ { "address", "example.com" }, { "port", 70000 } };
         QTest::newRow("invalid port") << toJson(json);
+
+        json = manifestJson(QJsonArray{ validMod });
+        json["server"] = QJsonObject{ { "address", "example.com" }, { "queryPort", "25565" } };
+        QTest::newRow("invalid query port") << toJson(json);
 
         json = manifestJson(QJsonArray{ validMod });
         json["server"] = QJsonObject{ { "address", "https://example.com/" } };
@@ -579,8 +708,362 @@ class ServerPackTest : public QObject {
         const auto files = translator.translate("OurServerPage", "%n file(s)", nullptr, 5);
         QVERIFY(files.contains("%n"));
 
+        const auto morePlayers = translator.translate("OurServerPage", "…and %n more", nullptr, 3);
+        QVERIFY(morePlayers.contains("%n"));
+        QVERIFY(!translator.translate("ServerStatusTask", "The server did not respond in time.", nullptr, -1).isEmpty());
+
         // strings of the rest of the launcher are left to the regular translations
         QVERIFY(translator.translate("MainWindow", "Add Instanc&e...", nullptr, -1).isEmpty());
+    }
+
+    // server status
+
+    void test_varInt_data()
+    {
+        QTest::addColumn<qint32>("value");
+        QTest::addColumn<QByteArray>("encoded");
+        QTest::newRow("0") << 0 << QByteArray::fromHex("00");
+        QTest::newRow("1") << 1 << QByteArray::fromHex("01");
+        QTest::newRow("127") << 127 << QByteArray::fromHex("7f");
+        QTest::newRow("128") << 128 << QByteArray::fromHex("8001");
+        QTest::newRow("255") << 255 << QByteArray::fromHex("ff01");
+        QTest::newRow("25565") << 25565 << QByteArray::fromHex("ddc701");
+        QTest::newRow("2097151") << 2097151 << QByteArray::fromHex("ffff7f");
+        QTest::newRow("max") << 2147483647 << QByteArray::fromHex("ffffffff07");
+        QTest::newRow("-1") << -1 << QByteArray::fromHex("ffffffff0f");
+    }
+
+    void test_varInt()
+    {
+        QFETCH(qint32, value);
+        QFETCH(QByteArray, encoded);
+
+        QByteArray data;
+        ServerStatus::writeVarInt(data, value);
+        QCOMPARE(data, encoded);
+
+        qsizetype offset = 0;
+        qint32 decoded = 0;
+        QVERIFY(ServerStatus::readVarInt(data, offset, decoded) == ServerStatus::ReadState::Complete);
+        QCOMPARE(decoded, value);
+        QCOMPARE(offset, data.size());
+    }
+
+    void test_readVarIntLimits()
+    {
+        qsizetype offset = 0;
+        qint32 value = 0;
+        QVERIFY(ServerStatus::readVarInt(QByteArray::fromHex("ff"), offset, value) == ServerStatus::ReadState::Incomplete);
+        QCOMPARE(offset, 0);
+        QVERIFY(ServerStatus::readVarInt(QByteArray::fromHex("ffffffffff01"), offset, value) == ServerStatus::ReadState::Invalid);
+    }
+
+    void test_readPacket()
+    {
+        const auto packet = framedPacket(0x01, QByteArray::fromHex("0102030405060708"));
+        const QByteArray buffer = packet + QByteArray::fromHex("aabb");
+        const auto read = ServerStatus::readPacket(buffer);
+        QVERIFY(read.state == ServerStatus::ReadState::Complete);
+        QCOMPARE(read.id, 0x01);
+        QCOMPARE(read.payload, QByteArray::fromHex("0102030405060708"));
+        QCOMPARE(read.size, packet.size());
+
+        QVERIFY(ServerStatus::readPacket(packet.left(packet.size() - 1)).state == ServerStatus::ReadState::Incomplete);
+        QVERIFY(ServerStatus::readPacket(QByteArray()).state == ServerStatus::ReadState::Incomplete);
+        QVERIFY(ServerStatus::readPacket(QByteArray::fromHex("00")).state == ServerStatus::ReadState::Invalid);
+
+        QByteArray oversized;
+        ServerStatus::writeVarInt(oversized, static_cast<qint32>(ServerStatus::MAX_PACKET_LENGTH + 1));
+        QVERIFY(ServerStatus::readPacket(oversized).state == ServerStatus::ReadState::Invalid);
+    }
+
+    void test_statusPackets()
+    {
+        const auto handshake = ServerStatus::handshakePacket("mc.example.com", 25565);
+        const auto read = ServerStatus::readPacket(handshake);
+        QVERIFY(read.state == ServerStatus::ReadState::Complete);
+        QCOMPARE(read.size, handshake.size());
+        QCOMPARE(read.id, 0x00);
+        // protocol version -1, host, port 25565, next state "status"
+        const QByteArray expectedPayload =
+            QByteArray::fromHex("ffffffff0f0e") + QByteArray("mc.example.com") + QByteArray::fromHex("63dd01");
+        QCOMPARE(read.payload, expectedPayload);
+
+        QCOMPARE(ServerStatus::statusRequestPacket(), QByteArray::fromHex("0100"));
+        QCOMPARE(ServerStatus::pingRequestPacket(1), QByteArray::fromHex("09010000000000000001"));
+
+        QVERIFY(ServerStatus::parsePongPayload(QByteArray::fromHex("000000000000002a")) == qint64(42));
+        QVERIFY(!ServerStatus::parsePongPayload(QByteArray::fromHex("0000002a")).has_value());
+    }
+
+    void test_parseStatus()
+    {
+        auto status = statusJson(3, 20, { "Alice", "Bob" });
+        auto players = status["players"].toObject();
+        auto sample = players["sample"].toArray();
+        // players hiding themselves, invalid names and duplicates are not listed
+        sample.append(QJsonObject{ { "name", "Anonymous Player" }, { "id", "00000000-0000-0000-0000-000000000000" } });
+        sample.append(QJsonObject{ { "name", "Hello World" }, { "id", "00000000-0000-3000-8000-000000000009" } });
+        sample.append(QJsonObject{ { "name", "Alice" }, { "id", "00000000-0000-3000-8000-000000000001" } });
+        players["sample"] = sample;
+        status["players"] = players;
+
+        const auto parsed = ServerStatus::parseStatusResponse(statusPayload(status));
+        QVERIFY2(parsed.has_value(), parsed ? "" : qPrintable(parsed.error()));
+        QCOMPARE(parsed->online, 3);
+        QCOMPARE(parsed->max, 20);
+        QCOMPARE(parsed->names, QStringList({ "Alice", "Bob" }));
+        QCOMPARE(parsed->unlistedCount(), 1);
+    }
+
+    void test_parseStatusPartialPlayerList()
+    {
+        // vanilla and Paper only send 12 names
+        const auto parsed = ServerStatus::parseStatusJson(statusJson(30, 50, playerNames(12)));
+        QVERIFY(parsed.has_value());
+        QCOMPARE(parsed->names.size(), 12);
+        QCOMPARE(parsed->unlistedCount(), 18);
+
+        const auto empty = ServerStatus::parseStatusJson(statusJson(0, 20, {}));
+        QVERIFY(empty.has_value());
+        QCOMPARE(empty->online, 0);
+        QCOMPARE(empty->unlistedCount(), 0);
+    }
+
+    void test_parseStatusWithoutPlayers()
+    {
+        auto status = statusJson(1, 1, {});
+        status.remove("players");
+        const auto parsed = ServerStatus::parseStatusJson(status);
+        QVERIFY(parsed.has_value());
+        // unknown, not zero
+        QCOMPARE(parsed->online, -1);
+        QCOMPARE(parsed->max, -1);
+        QCOMPARE(parsed->unlistedCount(), 0);
+    }
+
+    void test_invalidStatus_data()
+    {
+        QTest::addColumn<QByteArray>("payload");
+
+        auto status = statusJson(1, 20, {});
+        status["players"] = "many";
+        QTest::newRow("players is not an object") << statusPayload(status);
+
+        status["players"] = QJsonObject{ { "online", "3" }, { "max", 20 } };
+        QTest::newRow("online is a string") << statusPayload(status);
+
+        status["players"] = QJsonObject{ { "online", -1 }, { "max", 20 } };
+        QTest::newRow("negative online") << statusPayload(status);
+
+        status["players"] = QJsonObject{ { "online", 2.5 }, { "max", 20 } };
+        QTest::newRow("fractional online") << statusPayload(status);
+
+        status["players"] = QJsonObject{ { "online", 2 } };
+        QTest::newRow("missing max") << statusPayload(status);
+
+        QByteArray notJson;
+        ServerStatus::writeVarInt(notJson, 5);
+        notJson.append("hello");
+        QTest::newRow("not json") << notJson;
+
+        QTest::newRow("truncated") << statusPayload(statusJson(1, 20, {})).left(10);
+        QTest::newRow("empty") << QByteArray();
+    }
+
+    void test_invalidStatus()
+    {
+        QFETCH(QByteArray, payload);
+        const auto parsed = ServerStatus::parseStatusResponse(payload);
+        QVERIFY(!parsed.has_value());
+        QVERIFY(!parsed.error().isEmpty());
+    }
+
+    void test_playerNames()
+    {
+        QVERIFY(ServerStatus::isValidPlayerName("Steve"));
+        QVERIFY(ServerStatus::isValidPlayerName("a_b-c.1"));
+        QVERIFY(ServerStatus::isValidPlayerName("SixteenCharsName"));
+        QVERIFY(!ServerStatus::isValidPlayerName("SeventeenCharName"));
+        QVERIFY(!ServerStatus::isValidPlayerName(""));
+        QVERIFY(!ServerStatus::isValidPlayerName("Two Words"));
+        QVERIFY(!ServerStatus::isValidPlayerName(QString::fromUtf8("§cRed")));
+    }
+
+    void test_queryHandshake()
+    {
+        const qint32 sessionId = ServerStatus::querySessionId(0xFFFFFFFFU);
+        QCOMPARE(sessionId, 0x0F0F0F0F);
+        QCOMPARE(ServerStatus::queryHandshakeRequest(sessionId), QByteArray::fromHex("fefd090f0f0f0f"));
+
+        auto token = ServerStatus::parseQueryHandshakeResponse(queryHandshakeResponse(sessionId, "9513307"), sessionId);
+        QVERIFY(token.has_value());
+        QCOMPARE(*token, 9513307);
+
+        token = ServerStatus::parseQueryHandshakeResponse(queryHandshakeResponse(sessionId, "-1234"), sessionId);
+        QVERIFY(token.has_value());
+        QCOMPARE(*token, -1234);
+
+        // tokens above the signed range are sent as their 32 bit representation
+        token = ServerStatus::parseQueryHandshakeResponse(queryHandshakeResponse(sessionId, "4294967295"), sessionId);
+        QVERIFY(token.has_value());
+        QCOMPARE(*token, -1);
+
+        QVERIFY(!ServerStatus::parseQueryHandshakeResponse(queryHandshakeResponse(1, "9513307"), sessionId).has_value());
+        QVERIFY(!ServerStatus::parseQueryHandshakeResponse(queryHandshakeResponse(sessionId, ""), sessionId).has_value());
+        QVERIFY(!ServerStatus::parseQueryHandshakeResponse(queryHandshakeResponse(sessionId, "token"), sessionId).has_value());
+        QVERIFY(!ServerStatus::parseQueryHandshakeResponse(queryHandshakeResponse(sessionId, "99999999999"), sessionId).has_value());
+        QVERIFY(!ServerStatus::parseQueryHandshakeResponse(queryHandshakeResponse(sessionId, "9513307").chopped(1), sessionId).has_value());
+    }
+
+    void test_queryFullStat()
+    {
+        const qint32 sessionId = 0x01020304;
+        const auto request = ServerStatus::queryFullStatRequest(sessionId, 9513307);
+        const QByteArray expectedRequest = QByteArray::fromHex("fefd0001020304") + int32Bytes(9513307) + QByteArray::fromHex("00000000");
+        QCOMPARE(request, expectedRequest);
+
+        const auto parsed =
+            ServerStatus::parseQueryFullStatResponse(queryStatResponse(sessionId, 3, 20, { "Alice", "Bob", "Carol" }), sessionId);
+        QVERIFY2(parsed.has_value(), parsed ? "" : qPrintable(parsed.error()));
+        QCOMPARE(parsed->online, 3);
+        QCOMPARE(parsed->max, 20);
+        QCOMPARE(parsed->names, QStringList({ "Alice", "Bob", "Carol" }));
+
+        const auto empty = ServerStatus::parseQueryFullStatResponse(queryStatResponse(sessionId, 0, 20, {}), sessionId);
+        QVERIFY(empty.has_value());
+        QVERIFY(empty->names.isEmpty());
+    }
+
+    void test_invalidQueryFullStat()
+    {
+        const qint32 sessionId = 0x01020304;
+        const auto valid = queryStatResponse(sessionId, 2, 20, { "Alice", "Bob" });
+
+        QVERIFY(!ServerStatus::parseQueryFullStatResponse(valid, 0x05060708).has_value());
+        QVERIFY(!ServerStatus::parseQueryFullStatResponse(valid.left(40), sessionId).has_value());
+        QVERIFY(!ServerStatus::parseQueryFullStatResponse(QByteArray(), sessionId).has_value());
+
+        auto wrongHeader = valid;
+        wrongHeader[5] = 'S';
+        QVERIFY(!ServerStatus::parseQueryFullStatResponse(wrongHeader, sessionId).has_value());
+
+        auto withoutCount = valid;
+        withoutCount.replace("numplayers", "numplayerz");
+        QVERIFY(!ServerStatus::parseQueryFullStatResponse(withoutCount, sessionId).has_value());
+    }
+
+    void test_mergePlayers()
+    {
+        ServerStatus::Players status;
+        status.online = 14;
+        status.max = 20;
+        status.names = playerNames(12);
+        QCOMPARE(status.unlistedCount(), 2);
+
+        QCOMPARE(ServerStatus::mergePlayers(status, std::nullopt).names, status.names);
+
+        ServerStatus::Players query;
+        query.online = 14;
+        query.max = 20;
+        query.names = playerNames(14);
+        const auto merged = ServerStatus::mergePlayers(status, query);
+        QCOMPARE(merged.online, 14);
+        QCOMPARE(merged.max, 20);
+        QCOMPARE(merged.names.size(), 14);
+        QCOMPARE(merged.unlistedCount(), 0);
+    }
+
+    void test_statusTaskWithQuery()
+    {
+        QTcpServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        serveStatus(server, statusJson(14, 20, playerNames(12)));
+
+        // a minimal Query responder
+        QUdpSocket query;
+        QVERIFY(query.bind(QHostAddress::LocalHost, 0));
+        connect(&query, &QUdpSocket::readyRead, &query, [&query] {
+            while (query.hasPendingDatagrams()) {
+                const auto datagram = query.receiveDatagram();
+                const auto data = datagram.data();
+                if (data.size() < 7 || !data.startsWith(QByteArray::fromHex("fefd"))) {
+                    continue;
+                }
+                const auto sessionId = qFromBigEndian<qint32>(data.constData() + 3);
+                if (data.at(2) == '\x09') {
+                    query.writeDatagram(datagram.makeReply(queryHandshakeResponse(sessionId, "9513307")));
+                } else if (data.size() == 15 && qFromBigEndian<qint32>(data.constData() + 7) == 9513307) {
+                    query.writeDatagram(datagram.makeReply(queryStatResponse(sessionId, 14, 20, playerNames(14))));
+                }
+            }
+        });
+
+        ServerStatusTask task("127.0.0.1", server.serverPort(), query.localPort());
+        QSignalSpy finished(&task, &Task::finished);
+        task.start();
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 20000);
+
+        QVERIFY(task.wasSuccessful());
+        const auto& result = task.result();
+        QVERIFY2(result.online, qPrintable(result.error));
+        QCOMPARE(result.players.online, 14);
+        QCOMPARE(result.players.max, 20);
+        QVERIFY(result.latencyMs >= 0);
+        QVERIFY2(result.fullPlayerList, qPrintable(result.queryError));
+        QCOMPARE(result.players.names, playerNames(14));
+        QCOMPARE(result.players.unlistedCount(), 0);
+        QVERIFY(result.checkedAt.isValid());
+    }
+
+    void test_statusTaskWithoutQueryResponse()
+    {
+        QTcpServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        serveStatus(server, statusJson(14, 20, playerNames(12)));
+
+        // Query is configured, but nothing answers
+        QUdpSocket silent;
+        QVERIFY(silent.bind(QHostAddress::LocalHost, 0));
+
+        ServerStatusTask task("127.0.0.1", server.serverPort(), silent.localPort());
+        QSignalSpy finished(&task, &Task::finished);
+        task.start();
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 20000);
+
+        const auto& result = task.result();
+        QVERIFY(result.online);
+        QVERIFY(!result.fullPlayerList);
+        QVERIFY(!result.queryError.isEmpty());
+        // the partial list of Server List Ping is kept
+        QCOMPARE(result.players.names.size(), 12);
+        QCOMPARE(result.players.unlistedCount(), 2);
+    }
+
+    void test_statusTaskUnavailableServer()
+    {
+        quint16 port = 0;
+        {
+            QTcpServer server;
+            QVERIFY(server.listen(QHostAddress::LocalHost));
+            port = server.serverPort();
+        }
+
+        ServerStatusTask task("127.0.0.1", port, 0);
+        QSignalSpy finished(&task, &Task::finished);
+        task.start();
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 20000);
+
+        QVERIFY(task.wasSuccessful());
+        const auto& result = task.result();
+        QVERIFY(!result.online);
+        QVERIFY(!result.error.isEmpty());
+        // nothing is made up for an unavailable server
+        QCOMPARE(result.players.online, -1);
+        QCOMPARE(result.players.max, -1);
+        QVERIFY(result.players.names.isEmpty());
+        QCOMPARE(result.latencyMs, qint64(-1));
+        QVERIFY(result.checkedAt.isValid());
     }
 };
 

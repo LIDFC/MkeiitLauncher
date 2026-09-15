@@ -459,6 +459,10 @@ set(OURSERVER_SOURCES
     ourserver/ServerPackPlan.h
     ourserver/ServerPackTask.cpp
     ourserver/ServerPackTask.h
+    ourserver/ServerStatus.cpp
+    ourserver/ServerStatus.h
+    ourserver/ServerStatusTask.cpp
+    ourserver/ServerStatusTask.h
 )
 
 set(TOOLS_SOURCES

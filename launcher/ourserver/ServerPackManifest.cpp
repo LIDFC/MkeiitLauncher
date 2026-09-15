@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QSet>
+#include <optional>
 
 #include "Version.h"
 
@@ -41,6 +42,15 @@ const QRegularExpression& hostPattern()
 bool matches(const QRegularExpression& pattern, const QString& value)
 {
     return pattern.match(value).hasMatch();
+}
+
+std::optional<int> readPort(const QJsonValue& value)
+{
+    const double port = value.toDouble(-1);
+    if (!value.isDouble() || port < 1 || port > 65535 || port != static_cast<int>(port)) {
+        return std::nullopt;
+    }
+    return static_cast<int>(port);
 }
 }  // namespace
 
@@ -80,12 +90,16 @@ std::expected<Manifest, QString> parseManifest(const QByteArray& data)
     if (const auto serverValue = root.value("server"); !serverValue.isUndefined()) {
         const auto server = serverValue.toObject();
         manifest.serverAddress = server.value("address").toString().trimmed();
-        const auto portValue = server.value("port");
         bool validPort = true;
-        if (!portValue.isUndefined()) {
-            const double port = portValue.toDouble(-1);
-            validPort = portValue.isDouble() && port >= 1 && port <= 65535 && port == static_cast<int>(port);
-            manifest.serverPort = static_cast<int>(port);
+        if (const auto portValue = server.value("port"); !portValue.isUndefined()) {
+            const auto port = readPort(portValue);
+            validPort = port.has_value();
+            manifest.serverPort = port.value_or(DEFAULT_SERVER_PORT);
+        }
+        if (const auto queryPortValue = server.value("queryPort"); !queryPortValue.isUndefined()) {
+            const auto queryPort = readPort(queryPortValue);
+            validPort = validPort && queryPort.has_value();
+            manifest.queryPort = queryPort.value_or(0);
         }
         if (!serverValue.isObject() || !validPort ||
             (!manifest.serverAddress.isEmpty() && !matches(hostPattern(), manifest.serverAddress))) {

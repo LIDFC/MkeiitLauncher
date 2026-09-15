@@ -7,6 +7,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QListWidget>
 #include <QPushButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
@@ -24,6 +25,8 @@
 #include "ui/widgets/ProgressWidget.h"
 
 namespace {
+constexpr int STATUS_REFRESH_INTERVAL_MS = 30000;
+
 QString loaderDisplayName(const QString& type)
 {
     if (type == "fabric") {
@@ -46,6 +49,16 @@ QLabel* createValueLabel(QWidget* parent)
     auto* label = new QLabel(parent);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
     return label;
+}
+
+QListWidgetItem* addPlaceholderItem(QListWidget* list, const QString& text)
+{
+    auto* item = new QListWidgetItem(text, list);
+    item->setFlags(Qt::NoItemFlags);
+    QFont font = item->font();
+    font.setItalic(true);
+    item->setFont(font);
+    return item;
 }
 }  // namespace
 
@@ -70,16 +83,31 @@ OurServerPage::OurServerPage(QWidget* parent) : QWidget(parent)
     leftColumn->setSpacing(10);
     columns->addLayout(leftColumn, 2);
 
-    // server information
+    // server information and status
     m_serverGroup = new QGroupBox(this);
     auto* serverLayout = new QFormLayout(m_serverGroup);
     m_addressCaption = new QLabel(m_serverGroup);
     m_addressValue = createValueLabel(m_serverGroup);
+    m_statusCaption = new QLabel(m_serverGroup);
+    m_statusValue = createValueLabel(m_serverGroup);
+    QFont serverStatusFont = m_statusValue->font();
+    serverStatusFont.setBold(true);
+    m_statusValue->setFont(serverStatusFont);
+    m_playersCaption = new QLabel(m_serverGroup);
+    m_playersValue = createValueLabel(m_serverGroup);
+    m_pingCaption = new QLabel(m_serverGroup);
+    m_pingValue = createValueLabel(m_serverGroup);
+    m_checkedCaption = new QLabel(m_serverGroup);
+    m_checkedValue = createValueLabel(m_serverGroup);
     m_minecraftCaption = new QLabel(m_serverGroup);
     m_minecraftValue = createValueLabel(m_serverGroup);
     m_loaderCaption = new QLabel(m_serverGroup);
     m_loaderValue = createValueLabel(m_serverGroup);
     serverLayout->addRow(m_addressCaption, m_addressValue);
+    serverLayout->addRow(m_statusCaption, m_statusValue);
+    serverLayout->addRow(m_playersCaption, m_playersValue);
+    serverLayout->addRow(m_pingCaption, m_pingValue);
+    serverLayout->addRow(m_checkedCaption, m_checkedValue);
     serverLayout->addRow(m_minecraftCaption, m_minecraftValue);
     serverLayout->addRow(m_loaderCaption, m_loaderValue);
     leftColumn->addWidget(m_serverGroup);
@@ -121,6 +149,18 @@ OurServerPage::OurServerPage(QWidget* parent) : QWidget(parent)
     m_refreshButton->setIcon(QIcon::fromTheme("refresh"));
     leftColumn->addWidget(m_refreshButton, 0, Qt::AlignLeft);
 
+    auto* rightColumn = new QVBoxLayout();
+    rightColumn->setSpacing(10);
+    columns->addLayout(rightColumn, 3);
+
+    // players online
+    m_playersGroup = new QGroupBox(this);
+    auto* playersLayout = new QVBoxLayout(m_playersGroup);
+    m_playerList = new QListWidget(m_playersGroup);
+    m_playerList->setSelectionMode(QAbstractItemView::NoSelection);
+    playersLayout->addWidget(m_playerList);
+    rightColumn->addWidget(m_playersGroup, 1);
+
     // mods of the server pack
     m_modsGroup = new QGroupBox(this);
     auto* modsLayout = new QVBoxLayout(m_modsGroup);
@@ -134,7 +174,7 @@ OurServerPage::OurServerPage(QWidget* parent) : QWidget(parent)
         m_modList->header()->setSectionResizeMode(column, QHeaderView::ResizeToContents);
     }
     modsLayout->addWidget(m_modList);
-    columns->addWidget(m_modsGroup, 3);
+    rightColumn->addWidget(m_modsGroup, 2);
 
     connect(m_actionButton, &QPushButton::clicked, this, [this] {
         if (m_actionIsRetry) {
@@ -144,7 +184,14 @@ OurServerPage::OurServerPage(QWidget* parent) : QWidget(parent)
         }
     });
     connect(m_playButton, &QPushButton::clicked, this, [this] { checkServerPack(AfterCheck::Play); });
-    connect(m_refreshButton, &QPushButton::clicked, this, [this] { checkServerPack(); });
+    connect(m_refreshButton, &QPushButton::clicked, this, [this] {
+        checkServerPack();
+        refreshServerStatus();
+    });
+
+    // the status is only refreshed while the category is visible
+    m_statusTimer.setInterval(STATUS_REFRESH_INTERVAL_MS);
+    connect(&m_statusTimer, &QTimer::timeout, this, [this] { refreshServerStatus(); });
 
     retranslate();
 }
@@ -152,6 +199,7 @@ OurServerPage::OurServerPage(QWidget* parent) : QWidget(parent)
 void OurServerPage::opened()
 {
     checkServerPack();
+    refreshServerStatus();
 }
 
 void OurServerPage::changeEvent(QEvent* event)
@@ -162,12 +210,29 @@ void OurServerPage::changeEvent(QEvent* event)
     QWidget::changeEvent(event);
 }
 
+void OurServerPage::showEvent(QShowEvent* event)
+{
+    m_statusTimer.start();
+    QWidget::showEvent(event);
+}
+
+void OurServerPage::hideEvent(QHideEvent* event)
+{
+    m_statusTimer.stop();
+    QWidget::hideEvent(event);
+}
+
 void OurServerPage::retranslate()
 {
     m_serverGroup->setTitle(tr("Server"));
     m_addressCaption->setText(tr("Address"));
+    m_statusCaption->setText(tr("Status"));
+    m_playersCaption->setText(tr("Players"));
+    m_pingCaption->setText(tr("Ping"));
+    m_checkedCaption->setText(tr("Last checked"));
     m_minecraftCaption->setText(tr("Minecraft"));
     m_loaderCaption->setText(tr("Loader"));
+    m_playersGroup->setTitle(tr("Players online"));
     m_packGroup->setTitle(tr("Server pack"));
     m_modList->setHeaderLabels({ tr("Mod"), tr("Status"), tr("Installed"), tr("Required") });
     m_playButton->setText(tr("▶ Play on server"));
@@ -241,6 +306,8 @@ void OurServerPage::onTaskFinished()
     const bool aborted = task->getState() == Task::State::AbortedByUser;
     if (task->hasManifest()) {
         m_manifest = task->manifest();
+        // the manifest can change the server address or the query port
+        refreshServerStatus(true);
     }
     if (task->hasPlan()) {
         m_plan = task->plan();
@@ -307,6 +374,69 @@ void OurServerPage::onTaskFinished()
     if (!succeeded && !aborted) {
         CustomMessageBox::selectable(this, tr("Server pack"), m_error, QMessageBox::Warning)->show();
     }
+}
+
+std::optional<OurServerPage::StatusTarget> OurServerPage::statusTarget() const
+{
+    // the same address the game joins
+    const auto join = OurServer::joinTarget(m_manifest ? *m_manifest : ServerPack::Manifest{});
+    if (!join || join->address.isEmpty()) {
+        return std::nullopt;
+    }
+    return StatusTarget{ join->address, join->port, m_manifest ? static_cast<quint16>(m_manifest->queryPort) : quint16(0) };
+}
+
+void OurServerPage::refreshServerStatus(bool onlyIfTargetChanged)
+{
+    if (m_statusTask && m_statusTask->isRunning()) {
+        // a finished check calls this again, so a changed target is not missed
+        return;
+    }
+    const auto target = statusTarget();
+    const QString key = target ? target->key() : QString();
+    if (onlyIfTargetChanged && key == m_statusKey && (m_status || key.isEmpty())) {
+        return;
+    }
+    if (key != m_statusKey) {
+        // never show the status of a different server
+        m_status.reset();
+        m_statusKey = key;
+    }
+    if (!target) {
+        updateStatusView();
+        return;
+    }
+
+    m_statusTask.reset(new ServerStatusTask(target->host, target->port, target->queryPort));
+    connect(m_statusTask.get(), &Task::finished, this, &OurServerPage::onStatusFinished);
+    m_statusTask->start();
+    updateStatusView();
+}
+
+void OurServerPage::onStatusFinished()
+{
+    const auto task = m_statusTask;
+    if (!task || !task->wasSuccessful()) {
+        updateStatusView();
+        return;
+    }
+
+    const auto& result = task->result();
+    if (!m_status || m_status->online != result.online) {
+        if (result.online) {
+            qCInfo(serverPackLogC).noquote() << "[ServerStatus]" << result.target << "is online";
+        } else {
+            qCInfo(serverPackLogC).noquote() << "[ServerStatus]" << result.target << "is unavailable:" << result.error;
+        }
+    }
+    if (!result.queryError.isEmpty() && (!m_status || m_status->queryError != result.queryError)) {
+        qCWarning(serverPackLogC).noquote() << "[ServerStatus] Query failed, only a part of the player list is shown:" << result.queryError;
+    }
+    m_status = result;
+    updateStatusView();
+
+    // the address may have changed while the server was checked
+    refreshServerStatus(true);
 }
 
 MinecraftInstance* OurServerPage::ensureInstance(const ServerPack::Manifest& manifest)
@@ -452,4 +582,68 @@ void OurServerPage::updateView()
     m_playButton->setToolTip(address.isEmpty() ? tr("The server address is not configured yet, the game starts without joining a server.")
                                                : QString());
     m_refreshButton->setEnabled(!busy);
+
+    updateStatusView();
+}
+
+void OurServerPage::updateStatusView()
+{
+    const QString unknown = QStringLiteral("—");
+    const bool checking = m_statusTask && m_statusTask->isRunning();
+
+    m_playerList->clear();
+    m_statusValue->setToolTip(QString());
+
+    if (!m_status) {
+        // nothing is known about this server (yet)
+        m_statusValue->setText(checking ? tr("Checking...") : unknown);
+        m_playersValue->setText(unknown);
+        m_pingValue->setText(unknown);
+        m_checkedValue->setText(unknown);
+        return;
+    }
+
+    const auto& status = *m_status;
+    m_checkedValue->setText(status.checkedAt.time().toString("HH:mm:ss"));
+    if (!status.online) {
+        m_statusValue->setText(tr("🔴 Unavailable"));
+        m_statusValue->setToolTip(status.error);
+        m_playersValue->setText(unknown);
+        m_pingValue->setText(unknown);
+        addPlaceholderItem(m_playerList, tr("No data"));
+        return;
+    }
+
+    const auto& players = status.players;
+    m_statusValue->setText(tr("🟢 Online"));
+    if (players.online < 0) {
+        m_playersValue->setText(unknown);
+    } else if (players.max < 0) {
+        m_playersValue->setText(QString::number(players.online));
+    } else {
+        m_playersValue->setText(QString("%1 / %2").arg(players.online).arg(players.max));
+    }
+    m_pingValue->setText(status.latencyMs < 0 ? unknown : tr("%1 ms").arg(status.latencyMs));
+
+    if (players.online < 0) {
+        addPlaceholderItem(m_playerList, tr("The server does not report its players."));
+        return;
+    }
+    if (players.online == 0 && players.names.isEmpty()) {
+        addPlaceholderItem(m_playerList, tr("Nobody is playing right now"));
+        return;
+    }
+    for (const auto& name : players.names) {
+        new QListWidgetItem(name, m_playerList);
+    }
+    if (const int unlisted = players.unlistedCount(); unlisted > 0) {
+        auto* item = addPlaceholderItem(m_playerList, tr("…and %n more", "", unlisted));
+        if (!status.queryError.isEmpty()) {
+            item->setToolTip(tr("The full player list could not be requested: %1").arg(status.queryError));
+        } else if (!status.fullPlayerList) {
+            item->setToolTip(
+                tr("The server shows only a part of the player list. The full list needs enable-query=true on the server and "
+                   "\"queryPort\" in the manifest."));
+        }
+    }
 }

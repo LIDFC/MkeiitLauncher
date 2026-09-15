@@ -34,6 +34,7 @@ struct Manifest {
     QString packVersion;
     QString serverAddress;
     int serverPort = DEFAULT_SERVER_PORT;
+    int queryPort = 0;  // UDP port of Query (enable-query=true on the server), 0 if it is not enabled
     QString minecraft;
     QString loaderType;
     QString loaderVersion;

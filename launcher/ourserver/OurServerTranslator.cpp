@@ -86,6 +86,16 @@ const QHash<QString, QStringList>& translations()
             { "ServerPackTask", "Could not download the server pack: %1", { "Не удалось скачать серверную сборку: %1" } },
             { "ServerPackTask", "Could not save the server pack state: %1", { "Не удалось сохранить состояние серверной сборки: %1" } },
 
+            // server status
+            { "ServerStatus", "The server sent an invalid status response.", { "Сервер прислал некорректный ответ о своём состоянии." } },
+            { "ServerStatus", "The server sent an invalid query response.", { "Сервер прислал некорректный ответ query." } },
+            { "ServerStatusTask", "Checking the server status...", { "Проверка состояния сервера..." } },
+            { "ServerStatusTask", "The server address could not be resolved.", { "Не удалось найти адрес сервера." } },
+            { "ServerStatusTask", "Could not connect to the server: %1", { "Не удалось подключиться к серверу: %1" } },
+            { "ServerStatusTask", "The server did not respond in time.", { "Сервер не ответил вовремя." } },
+            { "ServerStatusTask", "The query port is not reachable: %1", { "Порт query недоступен: %1" } },
+            { "ServerStatusTask", "The query port did not respond in time.", { "Порт query не ответил вовремя." } },
+
             // server instance
             { "OurServer::CreateInstanceTask", "Creating the server instance...", { "Создание экземпляра для сервера..." } },
 
@@ -130,6 +140,24 @@ const QHash<QString, QStringList>& translations()
               "The server pack could not be checked:\n%1\n\nPlay with the mods that are already installed?",
               { "Не удалось проверить серверную сборку:\n%1\n\nИграть с уже установленными модами?" } },
             { "OurServerPage", "Abort", { "Отмена" } },
+            { "OurServerPage", "Players", { "Игроки" } },
+            { "OurServerPage", "Ping", { "Пинг" } },
+            { "OurServerPage", "Last checked", { "Последняя проверка" } },
+            { "OurServerPage", "Players online", { "Игроки на сервере" } },
+            { "OurServerPage", "Checking...", { "Проверка..." } },
+            { "OurServerPage", "🟢 Online", { "🟢 В сети" } },
+            { "OurServerPage", "🔴 Unavailable", { "🔴 Недоступен" } },
+            { "OurServerPage", "%1 ms", { "%1 мс" } },
+            { "OurServerPage", "No data", { "Нет данных" } },
+            { "OurServerPage", "The server does not report its players.", { "Сервер не сообщает, кто на нём играет." } },
+            { "OurServerPage", "Nobody is playing right now", { "Сейчас никто не играет" } },
+            { "OurServerPage", "…and %n more", { "…и ещё %n", "…и ещё %n", "…и ещё %n" } },
+            { "OurServerPage",
+              "The server shows only a part of the player list. The full list needs enable-query=true on the server and "
+              "\"queryPort\" in the manifest.",
+              { "Сервер показывает только часть списка игроков. Для полного списка на сервере нужен enable-query=true, а в "
+                "манифесте — \"queryPort\"." } },
+            { "OurServerPage", "The full player list could not be requested: %1", { "Не удалось запросить полный список игроков: %1" } },
             { "OurServerPage", "Could not create the server instance: %1", { "Не удалось создать экземпляр для сервера: %1" } },
 
             // main window and settings
