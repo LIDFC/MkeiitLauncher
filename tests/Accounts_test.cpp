@@ -1,4 +1,5 @@
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QTest>
 
@@ -11,6 +12,10 @@
 
 class AccountsTest : public QObject {
     Q_OBJECT
+
+    // NOTE: don't use raw string literals in this file. moc does not understand them: a "//" inside one (e.g. in a URL)
+    // is read as a comment, moc loses track of the class and generates no meta object for it.
+    static QByteArray toJson(const QJsonObject& object) { return QJsonDocument(object).toJson(QJsonDocument::Compact); }
 
     static QJsonObject profileJson(const QString& id, const QString& name)
     {
@@ -168,7 +173,7 @@ class AccountsTest : public QObject {
 
     void test_authlibInjectorArguments()
     {
-        const QByteArray metadata(R"({"meta":{"serverName":"Ely.by"}})");
+        const QByteArray metadata = toJson(QJsonObject{ { "meta", QJsonObject{ { "serverName", "Ely.by" } } } });
         auto args = InjectAuthlib::buildJvmArguments("/data/authlib-injector-1.2.8.jar", ElyBy::AUTHLIB_INJECTOR_API_URL, metadata);
         QCOMPARE(args.size(), 2);
         QCOMPARE(args[0], QString("-javaagent:/data/authlib-injector-1.2.8.jar=https://authserver.ely.by/api/authlib-injector"));
@@ -181,8 +186,12 @@ class AccountsTest : public QObject {
     void test_parseElyByAccountInfo()
     {
         MinecraftProfile profile;
-        const QByteArray data(
-            R"({"id":1,"uuid":"ffc8fdc9-5824-509e-8a57-c99b940fb996","username":"ErickSkrauch","registeredAt":1470566470,"profileLink":"http://ely.by/u1","preferredLanguage":"be"})");
+        const QByteArray data = toJson(QJsonObject{ { "id", 1 },
+                                                    { "uuid", "ffc8fdc9-5824-509e-8a57-c99b940fb996" },
+                                                    { "username", "ErickSkrauch" },
+                                                    { "registeredAt", 1470566470 },
+                                                    { "profileLink", "http://ely.by/u1" },
+                                                    { "preferredLanguage", "be" } });
         QVERIFY(Parsers::parseElyByAccountInfo(data, profile));
         QCOMPARE(profile.id, QString("ffc8fdc95824509e8a57c99b940fb996"));
         QCOMPARE(profile.name, QString("ErickSkrauch"));
@@ -190,21 +199,22 @@ class AccountsTest : public QObject {
         QVERIFY(profile.validity == Validity::Certain);
 
         MinecraftProfile invalid;
-        QVERIFY(!Parsers::parseElyByAccountInfo(QByteArray(R"({"id":1,"username":"NoUuid"})"), invalid));
-        QVERIFY(!Parsers::parseElyByAccountInfo(QByteArray(R"({"id":1,"uuid":"not-a-uuid","username":"Bad"})"), invalid));
+        QVERIFY(!Parsers::parseElyByAccountInfo(toJson(QJsonObject{ { "id", 1 }, { "username", "NoUuid" } }), invalid));
+        QVERIFY(
+            !Parsers::parseElyByAccountInfo(toJson(QJsonObject{ { "id", 1 }, { "uuid", "not-a-uuid" }, { "username", "Bad" } }), invalid));
         QVERIFY(!Parsers::parseElyByAccountInfo(QByteArray("not json"), invalid));
     }
 
     void test_parseOAuthTokenResponse()
     {
-        auto granted = Parsers::parseOAuthTokenResponse(
-            QByteArray(R"({"access_token":"access","refresh_token":"refresh","token_type":"Bearer","expires_in":86400})"));
+        auto granted = Parsers::parseOAuthTokenResponse(toJson(QJsonObject{
+            { "access_token", "access" }, { "refresh_token", "refresh" }, { "token_type", "Bearer" }, { "expires_in", 86400 } }));
         QCOMPARE(granted.accessToken, QString("access"));
         QCOMPARE(granted.refreshToken, QString("refresh"));
         QCOMPARE(granted.expiresIn, 86400);
         QVERIFY(granted.error.isEmpty());
 
-        auto pending = Parsers::parseOAuthTokenResponse(QByteArray(R"({"error":"authorization_pending"})"));
+        auto pending = Parsers::parseOAuthTokenResponse(toJson(QJsonObject{ { "error", "authorization_pending" } }));
         QCOMPARE(pending.error, QString("authorization_pending"));
         QVERIFY(pending.accessToken.isEmpty());
     }
