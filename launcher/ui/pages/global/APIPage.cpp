@@ -60,8 +60,6 @@ APIPage::APIPage(QWidget* parent) : QWidget(parent), ui(new Ui::APIPage)
                              static_cast<int>(PasteUpload::Type::PasteGG), static_cast<int>(PasteUpload::Type::Hastebin) };
 
     static const QRegularExpression s_validUrlRegExp("https?://.+");
-    static const QRegularExpression s_validMSAClientID(
-        QRegularExpression::anchoredPattern("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"));
 
     ui->setupUi(this);
 
@@ -78,7 +76,6 @@ APIPage::APIPage(QWidget* parent) : QWidget(parent), ui(new Ui::APIPage)
     ui->resourceURL->setValidator(new QRegularExpressionValidator(s_validUrlRegExp, ui->resourceURL));
     ui->baseURLEntry->setValidator(new QRegularExpressionValidator(s_validUrlRegExp, ui->baseURLEntry));
     ui->legacyFMLLibsURL->setValidator(new QRegularExpressionValidator(s_validUrlRegExp, ui->legacyFMLLibsURL));
-    ui->msaClientID->setValidator(new QRegularExpressionValidator(s_validMSAClientID, ui->msaClientID));
 
     ui->metaURL->setPlaceholderText(BuildConfig.META_URL);
     ui->resourceURL->setPlaceholderText(BuildConfig.DEFAULT_RESOURCE_BASE);
@@ -139,8 +136,8 @@ void APIPage::loadSettings()
         ui->FallbackMRBlockedMods->setChecked(fallbackMRBlockedMods);
     }
 
-    QString msaClientID = s->get("MSAClientIDOverride").toString();
-    ui->msaClientID->setText(msaClientID);
+    QString elyByClientID = s->get("ElyByClientIDOverride").toString();
+    ui->elyByClientID->setText(elyByClientID);
     QString metaURL = s->get("MetaURLOverride").toString();
     ui->metaURL->setText(metaURL);
     ui->metaRefreshOnLaunchCB->setCheckState(s->get("MetaRefreshOnLaunch").toBool() ? Qt::Checked : Qt::Unchecked);
@@ -164,8 +161,8 @@ void APIPage::applySettings()
     s->set("PastebinType", ui->pasteTypeComboBox->currentData().toInt());
     s->set("PastebinCustomAPIBase", ui->baseURLEntry->text());
 
-    QString msaClientID = ui->msaClientID->text();
-    s->set("MSAClientIDOverride", msaClientID);
+    QString elyByClientID = ui->elyByClientID->text().trimmed();
+    s->set("ElyByClientIDOverride", elyByClientID);
     QUrl metaURL(ui->metaURL->text());
     QUrl resourceURL(ui->resourceURL->text());
     QUrl fmlLibsURL(ui->legacyFMLLibsURL->text());

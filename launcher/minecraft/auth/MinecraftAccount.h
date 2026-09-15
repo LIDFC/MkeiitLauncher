@@ -83,7 +83,7 @@ class MinecraftAccount : public QObject, public Usable {
     //! Default constructor
     explicit MinecraftAccount(QObject* parent = 0);
 
-    static MinecraftAccountPtr createBlankMSA();
+    static MinecraftAccountPtr createBlankElyBy();
 
     static MinecraftAccountPtr createOffline(const QString& username);
 
@@ -95,7 +95,7 @@ class MinecraftAccount : public QObject, public Usable {
     QJsonObject saveToJson() const;
 
    public: /* manipulation */
-    shared_qobject_ptr<AuthFlow> login(bool useDeviceCode = false);
+    shared_qobject_ptr<AuthFlow> login();
 
     shared_qobject_ptr<AuthFlow> refresh();
 
@@ -116,10 +116,18 @@ class MinecraftAccount : public QObject, public Usable {
 
     AccountType accountType() const noexcept { return data.type; }
 
-    bool ownsMinecraft() const { return data.type != AccountType::Offline && data.minecraftEntitlement.ownsMinecraft; }
+    //! Microsoft account saved by an older version. It can only be displayed and removed.
+    bool isLegacyMicrosoft() const noexcept { return data.type == AccountType::MSA; }
+
+    //! Whether the account can be used to launch the game.
+    bool isUsable() const noexcept { return data.type == AccountType::Offline || data.type == AccountType::ElyBy; }
+
+    //! Whether the account authenticates against an online authentication service.
+    bool isOnline() const noexcept { return data.type == AccountType::ElyBy; }
 
     bool hasProfile() const { return data.profileId().size() != 0; }
 
+    //! Value of the ${user_type} game argument
     QString typeString() const
     {
         switch (data.type) {
@@ -128,6 +136,10 @@ class MinecraftAccount : public QObject, public Usable {
             } break;
             case AccountType::Offline: {
                 return "offline";
+            } break;
+            case AccountType::ElyBy: {
+                // as required by the authlib-injector launcher specification
+                return "mojang";
             } break;
             default: {
                 return "unknown";

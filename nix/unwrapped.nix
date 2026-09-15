@@ -14,7 +14,7 @@
   stripJavaArchivesHook,
   tomlplusplus,
   zlib,
-  msaClientID ? null,
+  elybyClientID ? null,
   libarchive,
 }:
 
@@ -97,8 +97,8 @@ stdenv.mkDerivation {
     # downstream branding
     (lib.cmakeFeature "Launcher_BUILD_PLATFORM" "nixpkgs")
   ]
-  ++ lib.optionals (msaClientID != null) [
-    (lib.cmakeFeature "Launcher_MSA_CLIENT_ID" (toString msaClientID))
+  ++ lib.optionals (elybyClientID != null) [
+    (lib.cmakeFeature "Launcher_ELYBY_CLIENT_ID" (toString elybyClientID))
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     # we wrap our binary manually

@@ -13,7 +13,7 @@ class AuthFlow : public Task {
     Q_OBJECT
 
    public:
-    enum class Action { Refresh, Login, DeviceCode };
+    enum class Action { Refresh, Login };
 
     explicit AuthFlow(AccountData* data, Action action = Action::Refresh);
     virtual ~AuthFlow() = default;
@@ -26,8 +26,8 @@ class AuthFlow : public Task {
     bool abort() override;
 
    signals:
-    void authorizeWithBrowser(const QUrl& url);
-    void authorizeWithBrowserWithExtra(QString url, QString code, int expiresIn);
+    //! The user has to open url in a browser and confirm code
+    void authorizeWithBrowser(QString url, QString code, int expiresIn);
 
    protected:
     void succeed();

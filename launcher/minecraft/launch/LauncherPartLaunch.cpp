@@ -96,6 +96,11 @@ void LauncherPartLaunch::executeTask()
     QString allArgs = args.join(" ");
     emit logLine("Java arguments:\n  " + m_parent->censorPrivateInfo(allArgs) + "\n", MessageLevel::Launcher);
 
+    // prepared by the InjectAuthlib step for sessions of online accounts (e.g. Ely.by)
+    if (m_session && !m_session->authlibInjectorJvmArgs.isEmpty()) {
+        args.append(m_session->authlibInjectorJvmArgs);
+    }
+
     auto javaPath = FS::ResolveExecutable(instance->settings()->get("JavaPath").toString());
 
     m_process.setProcessEnvironment(instance->createLaunchEnvironment());

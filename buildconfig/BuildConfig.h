@@ -139,19 +139,14 @@ class Config {
     QString HELP_URL;
 
     /**
-     * URL that gets opened when the user succesfully logins.
-     */
-    QString LOGIN_CALLBACK_URL;
-
-    /**
      * Client ID you can get from Imgur when you register an application
      */
     QString IMGUR_CLIENT_ID;
 
     /**
-     * Client ID you can get from Microsoft Identity Platform when you register an application
+     * OAuth2 client ID you can get from Ely.by when you register an application
      */
-    QString MSA_CLIENT_ID;
+    QString ELYBY_CLIENT_ID;
 
     /**
      * Client API key for CurseForge

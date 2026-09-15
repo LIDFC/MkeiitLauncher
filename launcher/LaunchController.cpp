@@ -43,9 +43,8 @@
 #include "net/NetUtils.h"
 #include "ui/InstanceWindow.h"
 #include "ui/dialogs/CustomMessageBox.h"
-#include "ui/dialogs/MSALoginDialog.h"
+#include "ui/dialogs/ElyByLoginDialog.h"
 #include "ui/dialogs/ProfileSelectDialog.h"
-#include "ui/dialogs/ProfileSetupDialog.h"
 #include "ui/dialogs/ProgressDialog.h"
 
 #include <QCheckBox>
@@ -59,6 +58,18 @@
 #include "launch/steps/TextPrint.h"
 #include "tasks/Task.h"
 #include "ui/dialogs/ChooseOfflineNameDialog.h"
+
+namespace {
+void warnUnsupportedAccount(QWidget* parent, const MinecraftAccountPtr& account)
+{
+    CustomMessageBox::selectable(parent, QObject::tr("Unsupported account"),
+                                 QObject::tr("'%1' is a Microsoft account. Microsoft accounts are no longer supported, please use a "
+                                             "Guest / Offline or Ely.by account instead.")
+                                     .arg(account->profileName()),
+                                 QMessageBox::Warning)
+        ->exec();
+}
+}  // namespace
 
 LaunchController::LaunchController() = default;
 
@@ -79,25 +90,33 @@ void LaunchController::executeTask()
 
 void LaunchController::decideAccount()
 {
+    auto* accounts = APPLICATION->accounts();
+
+    if (!m_accountToUse) {
+        // Select the account to use. If the instance has a specific account set, that will be used. Otherwise, the default account will be
+        // used
+        const auto instanceAccountId = m_instance->settings()->get("InstanceAccountId").toString();
+        const auto instanceAccountIndex = accounts->findAccountByProfileId(instanceAccountId);
+        if (instanceAccountIndex == -1 || instanceAccountId.isEmpty()) {
+            m_accountToUse = accounts->defaultAccount();
+        } else {
+            m_accountToUse = accounts->at(instanceAccountIndex);
+        }
+    }
+
+    if (m_accountToUse && m_accountToUse->isLegacyMicrosoft()) {
+        warnUnsupportedAccount(m_parentWidget, m_accountToUse);
+        m_accountToUse = nullptr;
+    }
+
     if (m_accountToUse) {
         return;
     }
 
-    // Select the account to use. If the instance has a specific account set, that will be used. Otherwise, the default account will be used
-    auto* accounts = APPLICATION->accounts();
-    const auto instanceAccountId = m_instance->settings()->get("InstanceAccountId").toString();
-    const auto instanceAccountIndex = accounts->findAccountByProfileId(instanceAccountId);
-    if (instanceAccountIndex == -1 || instanceAccountId.isEmpty()) {
-        m_accountToUse = accounts->defaultAccount();
-    } else {
-        m_accountToUse = accounts->at(instanceAccountIndex);
-    }
-
-    if (!accounts->anyAccountIsValid()) {
-        // Tell the user they need to log in at least one account in order to play.
+    if (!accounts->anyAccountIsUsable()) {
+        // Tell the user they need an account in order to play.
         auto reply = CustomMessageBox::selectable(m_parentWidget, tr("No Accounts"),
-                                                  tr("In order to play Minecraft, you must have at least one Microsoft "
-                                                     "account which owns Minecraft logged in. "
+                                                  tr("In order to play Minecraft, you need a Guest / Offline or an Ely.by account. "
                                                      "Would you like to open the account manager to add an account now?"),
                                                   QMessageBox::Information, QMessageBox::Yes | QMessageBox::No)
                          ->exec();
@@ -111,7 +130,7 @@ void LaunchController::decideAccount()
         }
     }
 
-    if (!m_accountToUse && accounts->anyAccountIsValid()) {
+    if (accounts->anyAccountIsUsable()) {
         // If no default account is set, ask the user which one to use.
         ProfileSelectDialog selectDialog(tr("Which account would you like to use?"), ProfileSelectDialog::GlobalDefaultCheckbox,
                                          m_parentWidget);
@@ -120,6 +139,10 @@ void LaunchController::decideAccount()
 
         // Launch the instance with the selected account.
         m_accountToUse = selectDialog.selectedAccount();
+        if (m_accountToUse && m_accountToUse->isLegacyMicrosoft()) {
+            warnUnsupportedAccount(m_parentWidget, m_accountToUse);
+            m_accountToUse = nullptr;
+        }
 
         // If the user said to use the account as default, do that.
         if (selectDialog.useAsGlobalDefault() && m_accountToUse) {
@@ -135,26 +158,13 @@ LaunchDecision LaunchController::decideLaunchMode()
         return LaunchDecision::Continue;
     }
 
-    const auto* accounts = APPLICATION->accounts();
-    MinecraftAccountPtr accountToCheck = nullptr;
-
-    if (m_accountToUse->accountType() != AccountType::Offline) {
-        accountToCheck = m_accountToUse->ownsMinecraft() ? m_accountToUse : nullptr;
-    } else if (const auto defaultAccount = accounts->defaultAccount(); defaultAccount && defaultAccount->ownsMinecraft()) {
-        accountToCheck = defaultAccount;
-    } else {
-        for (int i = 0; i < accounts->count(); i++) {
-            if (const auto account = accounts->at(i); account->ownsMinecraft()) {
-                accountToCheck = account;
-                break;
-            }
-        }
-    }
-
-    if (!accountToCheck) {
-        m_actualLaunchMode = LaunchMode::Demo;
+    // Guest / Offline accounts have nothing to authenticate. Normal mode still lets the launcher download the game.
+    if (!m_accountToUse->isOnline()) {
+        m_actualLaunchMode = m_wantedLaunchMode;
         return LaunchDecision::Continue;
     }
+
+    const MinecraftAccountPtr accountToCheck = m_accountToUse;
 
     auto state = accountToCheck->accountState();
     const bool needsRefresh =
@@ -213,9 +223,7 @@ bool LaunchController::askPlayDemo() const
 {
     QMessageBox box(m_parentWidget);
     box.setWindowTitle(tr("Play demo?"));
-    QString text = m_accountToUse
-                       ? tr("This account does not own Minecraft.\nYou need to purchase the game first to play the full version.")
-                       : tr("No account was selected for launch.");
+    QString text = tr("No account was selected for launch.");
     text += tr("\n\nDo you want to play the demo?");
     box.setText(text);
     box.setIcon(QMessageBox::Warning);
@@ -247,7 +255,7 @@ QString LaunchController::askOfflineName(const QString& playerName, bool* ok)
                 auto netErr = m_accountToUse->accountData()->networkError;
                 if (Net::isServerError(netErr)) {
                     title = tr("Auth servers offline");
-                    message = tr("The Minecraft authentication servers are currently unavailable, launching in offline mode.\n\n");
+                    message = tr("The authentication servers are currently unavailable, launching in offline mode.\n\n");
                 } else {
                     title = tr("No internet connection");
                     message = tr("You are not connected to the Internet, launching in offline mode.\n\n");
@@ -309,27 +317,18 @@ void LaunchController::login()
     m_session->launchMode = m_actualLaunchMode;
     m_accountToUse->fillSession(m_session);
 
-    if (m_accountToUse->accountType() != AccountType::Offline) {
-        if (m_actualLaunchMode == LaunchMode::Normal && !m_accountToUse->hasProfile()) {
-            // Now handle setting up a profile name here...
-            if (ProfileSetupDialog dialog(m_accountToUse, m_parentWidget); dialog.exec() != QDialog::Accepted) {
+    // an online account that could not (or should not) authenticate is launched without a session
+    if (m_accountToUse->isOnline() && m_actualLaunchMode == LaunchMode::Offline) {
+        bool ok = false;
+        QString name = m_offlineName;
+        if (name.isEmpty()) {
+            name = askOfflineName(m_session->player_name, &ok);
+            if (!ok) {
                 emitAborted();
                 return;
             }
         }
-
-        if (m_actualLaunchMode == LaunchMode::Offline && m_accountToUse->accountType() != AccountType::Offline) {
-            bool ok = false;
-            QString name = m_offlineName;
-            if (name.isEmpty()) {
-                name = askOfflineName(m_session->player_name, &ok);
-                if (!ok) {
-                    emitAborted();
-                    return;
-                }
-            }
-            m_session->MakeOffline(name);
-        }
+        m_session->MakeOffline(name);
     }
 
     launchInstance();
@@ -343,8 +342,8 @@ bool LaunchController::reauthenticateAccount(const MinecraftAccountPtr& account,
     if (button == QMessageBox::StandardButton::Yes) {
         auto* accounts = APPLICATION->accounts();
         const bool isDefault = accounts->defaultAccount() == account;
-        if (account->accountType() == AccountType::MSA) {
-            auto newAccount = MSALoginDialog::newAccount(m_parentWidget);
+        if (account->accountType() == AccountType::ElyBy) {
+            auto newAccount = ElyByLoginDialog::newAccount(m_parentWidget);
 
             if (newAccount != nullptr) {
                 accounts->removeAccount(accounts->index(accounts->findAccountByProfileId(account->profileId())));
@@ -399,9 +398,11 @@ void LaunchController::launchInstance()
         online_mode = "online";
 
         // Prepend Server Status
-        const QStringList servers = { "login.microsoftonline.com", "session.minecraft.net", "textures.minecraft.net", "api.mojang.com" };
+        if (m_accountToUse && m_accountToUse->accountType() == AccountType::ElyBy) {
+            const QStringList servers = { "account.ely.by", "authserver.ely.by", "skinsystem.ely.by" };
 
-        m_launcher->prependStep(makeShared<PrintServers>(m_launcher, servers));
+            m_launcher->prependStep(makeShared<PrintServers>(m_launcher, servers));
+        }
     } else {
         online_mode = m_actualLaunchMode == LaunchMode::Demo ? "demo" : "offline";
     }

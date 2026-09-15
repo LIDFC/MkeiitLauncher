@@ -103,7 +103,8 @@ class AccountList : public QAbstractListModel {
 
     MinecraftAccountPtr defaultAccount() const;
     void setDefaultAccount(MinecraftAccountPtr profileId);
-    bool anyAccountIsValid();
+    //! Whether there is at least one account that can be used to launch the game (Guest / Offline or Ely.by)
+    bool anyAccountIsUsable() const;
 
     bool isActive() const;
 

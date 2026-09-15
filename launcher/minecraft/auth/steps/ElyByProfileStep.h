@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 #pragma once
 #include <QObject>
 
@@ -5,16 +6,21 @@
 #include "net/NetJob.h"
 #include "net/Request.h"
 
-class LauncherLoginStep : public AuthStep {
+/**
+ * Fetches the Ely.by account (username and UUID) and prepares the game session token.
+ */
+class ElyByProfileStep : public AuthStep {
     Q_OBJECT
-
    public:
-    explicit LauncherLoginStep(AccountData* data);
-    virtual ~LauncherLoginStep() noexcept = default;
+    explicit ElyByProfileStep(AccountData* data);
+    ~ElyByProfileStep() noexcept override = default;
 
     void perform() override;
 
     QString describe() override;
+
+   public slots:
+    void abort() override;
 
    private slots:
     void onRequestDone(QByteArray* response);

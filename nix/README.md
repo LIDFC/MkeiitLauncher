@@ -215,5 +215,5 @@ The following parameters can be overridden:
 - `controllerSupport` (default: `isLinux`) Turn on/off support for controllers on Linux (macOS will always have this)
 - `gamemodeSupport` (default: `isLinux`) Turn on/off support for [Feral GameMode](https://github.com/FeralInteractive/gamemode) on Linux
 - `jdks` (default: `[ jdk21 jdk17 jdk8 ]`) Java runtimes added to `PRISMLAUNCHER_JAVA_PATHS` variable
-- `msaClientID` (default: `null`, requires full rebuild!) Client ID used for Microsoft Authentication
+- `elybyClientID` (default: `null`, requires full rebuild!) OAuth2 client ID used for Ely.by authentication
 - `textToSpeechSupport` (default: `isLinux`) Turn on/off support for text-to-speech on Linux (macOS will always have this)

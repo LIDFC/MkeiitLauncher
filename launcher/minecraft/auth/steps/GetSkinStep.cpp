@@ -15,6 +15,10 @@ QString GetSkinStep::describe()
 void GetSkinStep::perform()
 {
     QUrl url(m_data->minecraftProfile.skin.url);
+    if (url.isEmpty()) {
+        emit finished(AccountTaskState::STATE_WORKING, tr("No skin to download"));
+        return;
+    }
 
     auto [request, response] = Net::Request::makeByteArray(url);
     m_request = request;

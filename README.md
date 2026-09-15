@@ -61,6 +61,24 @@ The translation effort for Prism Launcher is hosted on [Weblate](https://hosted.
 
 If you want to build Prism Launcher yourself, check the [build instructions](https://prismlauncher.org/wiki/development/build-instructions).
 
+## Sponsors & Partners
+
+We thank all the wonderful backers over at Open Collective! Support Prism Launcher by [becoming a backer](https://opencollective.com/prismlauncher).
+
+[![OpenCollective Backers](https://opencollective.com/prismlauncher/backers.svg?width=890&limit=1000)](https://opencollective.com/prismlauncher#backers)
+
+Thanks to JetBrains for providing us a few licenses for all their products, as part of their [Open Source program](https://www.jetbrains.com/opensource/).
+
+<a href="https://jb.gg/OpenSource">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://www.jetbrains.com/company/brand/img/logo_jb_dos_4.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg">
+  <img alt="JetBrains logo" src="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg" width="40%">
+</picture>
+</a>
+
+Thanks to Weblate for hosting our translation efforts.
+
 <a href="https://hosted.weblate.org/engage/prismlauncher/">
 <img src="https://hosted.weblate.org/widgets/prismlauncher/-/open-graph.png" alt="Translation status" width="300" />
 </a>
@@ -86,10 +104,11 @@ If you are just building Prism Launcher for your distribution, please make sure 
 
 Note that if you build this software without removing the provided API keys in [CMakeLists.txt](CMakeLists.txt) you are accepting the following terms and conditions:
 
-- [Microsoft Identity Platform Terms of Use](https://docs.microsoft.com/en-us/legal/microsoft-identity-platform/terms-of-use)
 - [CurseForge 3rd Party API Terms and Conditions](https://support.curseforge.com/en/support/solutions/articles/9000207405-curse-forge-3rd-party-api-terms-and-conditions)
 
 If you do not agree with these terms and conditions, then remove the associated API keys from the [CMakeLists.txt](CMakeLists.txt) file by setting them to an empty string (`""`).
+
+Ely.by accounts require an OAuth2 client ID. Register an application with Ely.by (see the [Ely.by OAuth2 documentation](https://docs.ely.by/en/oauth.html)) and set `Launcher_ELYBY_CLIENT_ID`, or enter the client ID in Settings > APIs. Guest / Offline accounts work without it.
 
 ## License [![https://github.com/PrismLauncher/PrismLauncher/blob/develop/LICENSE](https://img.shields.io/github/license/PrismLauncher/PrismLauncher?label=License&logo=gnu&color=C4282D)](LICENSE)
 

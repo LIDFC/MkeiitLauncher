@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 #pragma once
 #include <QObject>
 
@@ -5,16 +6,21 @@
 #include "net/NetJob.h"
 #include "net/Request.h"
 
-class XboxUserStep : public AuthStep {
+/**
+ * Refreshes the Ely.by OAuth2 access token using the stored refresh token (offline_access scope).
+ */
+class ElyByRefreshStep : public AuthStep {
     Q_OBJECT
-
    public:
-    explicit XboxUserStep(AccountData* data);
-    virtual ~XboxUserStep() noexcept = default;
+    explicit ElyByRefreshStep(AccountData* data);
+    ~ElyByRefreshStep() noexcept override = default;
 
     void perform() override;
 
     QString describe() override;
+
+   public slots:
+    void abort() override;
 
    private slots:
     void onRequestDone(QByteArray* response);

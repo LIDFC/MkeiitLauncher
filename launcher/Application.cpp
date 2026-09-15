@@ -70,7 +70,6 @@
 #include "ui/setupwizard/AutoJavaWizardPage.h"
 #include "ui/setupwizard/JavaWizardPage.h"
 #include "ui/setupwizard/LanguageWizardPage.h"
-#include "ui/setupwizard/LoginWizardPage.h"
 #include "ui/setupwizard/PasteWizardPage.h"
 #include "ui/setupwizard/SetupWizard.h"
 #include "ui/setupwizard/ThemeWizardPage.h"
@@ -894,8 +893,8 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
 
         m_settings->registerSetting("WorldTools", "{}");
 
-        // Custom Microsoft Authentication Client ID
-        m_settings->registerSetting("MSAClientIDOverride", "");
+        // Custom Ely.by OAuth2 Client ID
+        m_settings->registerSetting("ElyByClientIDOverride", "");
 
         // Custom Flame API Key
         m_settings->registerSetting({ "FlameKeyOverride", "CFKeyOverride" }, "");
@@ -1250,9 +1249,8 @@ bool Application::createSetupWizard()
     bool pasteInterventionRequired = settings()->get("PastebinURL") != "";
     bool validWidgets = m_themeManager->isValidApplicationTheme(settings()->get("ApplicationTheme").toString());
     bool validIcons = m_themeManager->isValidIconTheme(settings()->get("IconTheme").toString());
-    bool login = !m_accounts->anyAccountIsValid() && (capabilities().testAnyFlags(Application::SupportsMSA));
     bool themeInterventionRequired = !validWidgets || !validIcons;
-    bool wizardRequired = javaRequired || languageRequired || pasteInterventionRequired || themeInterventionRequired || askjava || login;
+    bool wizardRequired = javaRequired || languageRequired || pasteInterventionRequired || themeInterventionRequired || askjava;
     if (wizardRequired) {
         // set default theme after going into theme wizard
         if (!validIcons) {
@@ -1290,14 +1288,11 @@ bool Application::createSetupWizard()
             m_setupWizard->addPage(new ThemeWizardPage(m_setupWizard));
         }
 
-        if (login) {
-            m_setupWizard->addPage(new LoginWizardPage(m_setupWizard));
-        }
         connect(m_setupWizard, &QDialog::finished, this, &Application::setupWizardFinished);
         m_setupWizard->show();
     }
 
-    return wizardRequired || login;
+    return wizardRequired;
 }
 
 bool Application::updaterEnabled()
@@ -1859,9 +1854,6 @@ Meta::Index* Application::metadataIndex()
 void Application::updateCapabilities()
 {
     m_capabilities = None;
-    if (!getMSAClientID().isEmpty()) {
-        m_capabilities |= SupportsMSA;
-    }
     if (!getFlameAPIKey().isEmpty()) {
         m_capabilities |= SupportsFlame;
     }
@@ -1905,14 +1897,14 @@ QString Application::getJarPath(const QString& jarFile)
     return {};
 }
 
-QString Application::getMSAClientID()
+QString Application::getElyByClientID()
 {
-    QString clientIDOverride = m_settings->get("MSAClientIDOverride").toString();
+    QString clientIDOverride = m_settings->get("ElyByClientIDOverride").toString().trimmed();
     if (!clientIDOverride.isEmpty()) {
         return clientIDOverride;
     }
 
-    return BuildConfig.MSA_CLIENT_ID;
+    return BuildConfig.ELYBY_CLIENT_ID;
 }
 
 QString Application::getFlameAPIKey()

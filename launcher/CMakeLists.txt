@@ -220,23 +220,16 @@ set(MINECRAFT_SOURCES
 
     minecraft/auth/AuthFlow.cpp
     minecraft/auth/AuthFlow.h
+    minecraft/auth/ElyBy.h
 
-    minecraft/auth/steps/EntitlementsStep.cpp
-    minecraft/auth/steps/EntitlementsStep.h
+    minecraft/auth/steps/ElyByDeviceCodeStep.cpp
+    minecraft/auth/steps/ElyByDeviceCodeStep.h
+    minecraft/auth/steps/ElyByProfileStep.cpp
+    minecraft/auth/steps/ElyByProfileStep.h
+    minecraft/auth/steps/ElyByRefreshStep.cpp
+    minecraft/auth/steps/ElyByRefreshStep.h
     minecraft/auth/steps/GetSkinStep.cpp
     minecraft/auth/steps/GetSkinStep.h
-    minecraft/auth/steps/LauncherLoginStep.cpp
-    minecraft/auth/steps/LauncherLoginStep.h
-    minecraft/auth/steps/MinecraftProfileStep.cpp
-    minecraft/auth/steps/MinecraftProfileStep.h
-    minecraft/auth/steps/MSADeviceCodeStep.cpp
-    minecraft/auth/steps/MSADeviceCodeStep.h
-    minecraft/auth/steps/MSAStep.cpp
-    minecraft/auth/steps/MSAStep.h
-    minecraft/auth/steps/XboxAuthorizationStep.cpp
-    minecraft/auth/steps/XboxAuthorizationStep.h
-    minecraft/auth/steps/XboxUserStep.cpp
-    minecraft/auth/steps/XboxUserStep.h
 
     minecraft/update/AssetUpdateTask.h
     minecraft/update/AssetUpdateTask.cpp
@@ -255,6 +248,8 @@ set(MINECRAFT_SOURCES
     minecraft/launch/EnsureAvailableMemory.h
     minecraft/launch/EnsureOfflineLibraries.cpp
     minecraft/launch/EnsureOfflineLibraries.h
+    minecraft/launch/InjectAuthlib.cpp
+    minecraft/launch/InjectAuthlib.h
     minecraft/launch/ModMinecraftJar.cpp
     minecraft/launch/ModMinecraftJar.h
     minecraft/launch/ExtractNatives.cpp
@@ -841,8 +836,6 @@ SET(LAUNCHER_SOURCES
     ui/setupwizard/ThemeWizardPage.h
     ui/setupwizard/AutoJavaWizardPage.cpp
     ui/setupwizard/AutoJavaWizardPage.h
-    ui/setupwizard/LoginWizardPage.cpp
-    ui/setupwizard/LoginWizardPage.h
 
     # GUI - themes
     ui/themes/FusionTheme.cpp
@@ -1032,8 +1025,6 @@ SET(LAUNCHER_SOURCES
     ui/dialogs/AboutDialog.h
     ui/dialogs/ProfileSelectDialog.cpp
     ui/dialogs/ProfileSelectDialog.h
-    ui/dialogs/ProfileSetupDialog.cpp
-    ui/dialogs/ProfileSetupDialog.h
     ui/dialogs/CopyInstanceDialog.cpp
     ui/dialogs/CopyInstanceDialog.h
     ui/dialogs/CreateShortcutDialog.cpp
@@ -1050,8 +1041,8 @@ SET(LAUNCHER_SOURCES
     ui/dialogs/IconPickerDialog.h
     ui/dialogs/ImportResourceDialog.cpp
     ui/dialogs/ImportResourceDialog.h
-    ui/dialogs/MSALoginDialog.cpp
-    ui/dialogs/MSALoginDialog.h
+    ui/dialogs/ElyByLoginDialog.cpp
+    ui/dialogs/ElyByLoginDialog.h
     ui/dialogs/NetworkJobFailedDialog.cpp
     ui/dialogs/NetworkJobFailedDialog.h
     ui/dialogs/NewComponentDialog.cpp

@@ -23,6 +23,9 @@ bool AuthSession::MakeOffline(QString offline_playername)
     session = "-";
     access_token = "0";
     player_name = offline_playername;
+    // an unauthenticated session must not be sent to an authentication server
+    authlibInjectorApiUrl.clear();
+    authlibInjectorJvmArgs.clear();
     return true;
 }
 
@@ -33,4 +36,6 @@ void AuthSession::MakeDemo(QString name, QString u)
     access_token = "0";
     player_name = name;
     launchMode = LaunchMode::Demo;
+    authlibInjectorApiUrl.clear();
+    authlibInjectorJvmArgs.clear();
 };

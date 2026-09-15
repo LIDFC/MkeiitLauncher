@@ -3,38 +3,26 @@
 #include <QNetworkRequest>
 
 #include "minecraft/auth/AccountData.h"
-#include "minecraft/auth/steps/EntitlementsStep.h"
+#include "minecraft/auth/steps/ElyByDeviceCodeStep.h"
+#include "minecraft/auth/steps/ElyByProfileStep.h"
+#include "minecraft/auth/steps/ElyByRefreshStep.h"
 #include "minecraft/auth/steps/GetSkinStep.h"
-#include "minecraft/auth/steps/LauncherLoginStep.h"
-#include "minecraft/auth/steps/MSADeviceCodeStep.h"
-#include "minecraft/auth/steps/MSAStep.h"
-#include "minecraft/auth/steps/MinecraftProfileStep.h"
-#include "minecraft/auth/steps/XboxAuthorizationStep.h"
-#include "minecraft/auth/steps/XboxUserStep.h"
 #include "tasks/Task.h"
 
 #include "AuthFlow.h"
 
-#include <Application.h>
-
 AuthFlow::AuthFlow(AccountData* data, Action action) : Task(), m_data(data)
 {
-    if (data->type == AccountType::MSA) {
-        if (action == Action::DeviceCode) {
-            auto oauthStep = makeShared<MSADeviceCodeStep>(m_data);
-            connect(oauthStep.get(), &MSADeviceCodeStep::authorizeWithBrowser, this, &AuthFlow::authorizeWithBrowserWithExtra);
+    // Offline accounts have nothing to authenticate. Legacy Microsoft accounts are rejected in executeTask().
+    if (data->type == AccountType::ElyBy) {
+        if (action == Action::Login) {
+            auto oauthStep = makeShared<ElyByDeviceCodeStep>(m_data);
+            connect(oauthStep.get(), &ElyByDeviceCodeStep::authorizeWithBrowser, this, &AuthFlow::authorizeWithBrowser);
             m_steps.append(oauthStep);
         } else {
-            auto oauthStep = makeShared<MSAStep>(m_data, action == Action::Refresh);
-            connect(oauthStep.get(), &MSAStep::authorizeWithBrowser, this, &AuthFlow::authorizeWithBrowser);
-            m_steps.append(oauthStep);
+            m_steps.append(makeShared<ElyByRefreshStep>(m_data));
         }
-        m_steps.append(makeShared<XboxUserStep>(m_data));
-        m_steps.append(
-            makeShared<XboxAuthorizationStep>(m_data, &m_data->mojangservicesToken, "rp://api.minecraftservices.com/", "Mojang"));
-        m_steps.append(makeShared<LauncherLoginStep>(m_data));
-        m_steps.append(makeShared<EntitlementsStep>(m_data));
-        m_steps.append(makeShared<MinecraftProfileStep>(m_data));
+        m_steps.append(makeShared<ElyByProfileStep>(m_data));
         m_steps.append(makeShared<GetSkinStep>(m_data));
     }
     changeState(AccountTaskState::STATE_CREATED);
@@ -48,6 +36,12 @@ void AuthFlow::succeed()
 
 void AuthFlow::executeTask()
 {
+    if (m_data->type == AccountType::MSA) {
+        changeState(AccountTaskState::STATE_DISABLED,
+                    tr("Microsoft accounts are no longer supported. Please remove this account and add a Guest / Offline or Ely.by "
+                       "account instead."));
+        return;
+    }
     changeState(AccountTaskState::STATE_WORKING, tr("Initializing"));
     nextStep();
 }
@@ -109,7 +103,7 @@ bool AuthFlow::changeState(AccountTaskState newState, QString reason)
             return false;
         }
         case AccountTaskState::STATE_DISABLED: {
-            setStatus(tr("Client ID has changed. New session needs to be created."));
+            setStatus(tr("This account cannot be used anymore. It needs to be added again."));
             m_data->errorString = reason;
             m_data->accountState = AccountState::Disabled;
             emitFailed(reason);

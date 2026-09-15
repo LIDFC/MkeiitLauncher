@@ -341,10 +341,13 @@ QVariant AccountList::data(const QModelIndex& index, int role) const
                 case TypeColumn: {
                     switch (account->accountType()) {
                         case AccountType::MSA: {
-                            return tr("MSA", "Account type");
+                            return tr("Microsoft (unsupported)", "Account type");
                         }
                         case AccountType::Offline: {
-                            return tr("Offline", "Account type");
+                            return tr("Guest / Offline", "Account type");
+                        }
+                        case AccountType::ElyBy: {
+                            return tr("Ely.by", "Account type");
                         }
                     }
                     return tr("Unknown", "Account type");
@@ -388,7 +391,7 @@ QVariant AccountList::headerData(int section, [[maybe_unused]] Qt::Orientation o
                 case ProfileNameColumn:
                     return tr("Minecraft username associated with the account.");
                 case TypeColumn:
-                    return tr("Type of the account (MSA or Offline)");
+                    return tr("Type of the account (Guest / Offline or Ely.by)");
                 case StatusColumn:
                     return tr("Current status of the account.");
                 default:
@@ -589,10 +592,10 @@ void AccountList::setListFilePath(QString path, bool autosave)
     m_autosave = autosave;
 }
 
-bool AccountList::anyAccountIsValid()
+bool AccountList::anyAccountIsUsable() const
 {
-    for (auto account : m_accounts) {
-        if (account->ownsMinecraft()) {
+    for (const auto& account : m_accounts) {
+        if (account->isUsable()) {
             return true;
         }
     }

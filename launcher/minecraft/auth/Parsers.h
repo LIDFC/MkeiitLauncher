@@ -9,11 +9,19 @@ bool getNumber(QJsonValue value, double& out);
 bool getNumber(QJsonValue value, int64_t& out);
 bool getBool(QJsonValue value, bool& out);
 
-bool parseXTokenResponse(QByteArray& data, Token& output, QString name);
-bool parseMojangResponse(QByteArray& data, Token& output);
-
-bool parseMinecraftProfile(QByteArray& data, MinecraftProfile& output);
 bool parseMinecraftProfileMojang(QByteArray& data, MinecraftProfile& output);
-bool parseMinecraftEntitlements(QByteArray& data, MinecraftEntitlement& output);
-bool parseRolloutResponse(QByteArray& data, bool& result);
+
+//! OAuth2 token endpoint response (RFC 6749 section 5.1 / 5.2)
+struct OAuthTokenResponse {
+    QString accessToken;
+    QString refreshToken;
+    int expiresIn = 0;
+
+    QString error;
+    QString errorDescription;
+};
+OAuthTokenResponse parseOAuthTokenResponse(const QByteArray& data);
+
+//! Ely.by /api/account/v1/info response
+bool parseElyByAccountInfo(const QByteArray& data, MinecraftProfile& output);
 }  // namespace Parsers

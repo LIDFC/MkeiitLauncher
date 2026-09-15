@@ -52,16 +52,14 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionAddMicrosoft"/>
    <addaction name="actionAddOffline"/>
+   <addaction name="actionAddElyBy"/>
    <addaction name="actionRefresh"/>
    <addaction name="actionRemove"/>
    <addaction name="actionSetDefault"/>
    <addaction name="actionNoDefault"/>
    <addaction name="actionMoveUp"/>
    <addaction name="actionMoveDown"/>
-   <addaction name="separator"/>
-   <addaction name="actionManageSkins"/>
   </widget>
   <action name="actionSetDefault">
    <property name="text">
@@ -76,22 +74,20 @@
     <string>&amp;No Default</string>
    </property>
   </action>
-  <action name="actionManageSkins">
-   <property name="text">
-    <string>&amp;Manage Skins</string>
-   </property>
-   <property name="toolTip">
-    <string>Manage Skins</string>
-   </property>
-  </action>
-  <action name="actionAddMicrosoft">
-   <property name="text">
-    <string>&amp;Add Microsoft</string>
-   </property>
-  </action>
   <action name="actionAddOffline">
    <property name="text">
-    <string>Add &amp;Offline</string>
+    <string>Add &amp;Guest / Offline</string>
+   </property>
+   <property name="toolTip">
+    <string>Add an account that plays without online authentication</string>
+   </property>
+  </action>
+  <action name="actionAddElyBy">
+   <property name="text">
+    <string>Add &amp;Ely.by</string>
+   </property>
+   <property name="toolTip">
+    <string>Log in with an Ely.by account in your browser</string>
    </property>
   </action>
   <action name="actionRefresh">

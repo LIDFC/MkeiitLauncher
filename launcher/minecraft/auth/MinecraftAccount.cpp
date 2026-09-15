@@ -52,6 +52,7 @@
 
 #include "minecraft/auth/AccountData.h"
 #include "minecraft/auth/AuthFlow.h"
+#include "minecraft/auth/ElyBy.h"
 
 MinecraftAccount::MinecraftAccount(QObject* parent) : QObject(parent)
 {
@@ -67,10 +68,10 @@ MinecraftAccountPtr MinecraftAccount::loadFromJsonV3(const QJsonObject& json)
     return nullptr;
 }
 
-MinecraftAccountPtr MinecraftAccount::createBlankMSA()
+MinecraftAccountPtr MinecraftAccount::createBlankElyBy()
 {
     MinecraftAccountPtr account(new MinecraftAccount());
-    account->data.type = AccountType::MSA;
+    account->data.type = AccountType::ElyBy;
     return account;
 }
 
@@ -113,11 +114,11 @@ QPixmap MinecraftAccount::getFace(int width, int height) const
     return skin.scaled(width, height, Qt::KeepAspectRatio);
 }
 
-shared_qobject_ptr<AuthFlow> MinecraftAccount::login(bool useDeviceCode)
+shared_qobject_ptr<AuthFlow> MinecraftAccount::login()
 {
     Q_ASSERT(m_currentTask.get() == nullptr);
 
-    m_currentTask.reset(new AuthFlow(&data, useDeviceCode ? AuthFlow::Action::DeviceCode : AuthFlow::Action::Login));
+    m_currentTask.reset(new AuthFlow(&data, AuthFlow::Action::Login));
     connect(m_currentTask.get(), &Task::succeeded, this, &MinecraftAccount::authSucceeded);
     connect(m_currentTask.get(), &Task::failed, this, &MinecraftAccount::authFailed);
     connect(m_currentTask.get(), &Task::aborted, this, [this] { authFailed(tr("Aborted")); });
@@ -163,16 +164,14 @@ void MinecraftAccount::authFailed(QString reason)
             // NOTE: this doesn't do much. There was an error of some sort.
         } break;
         case AccountTaskState::STATE_FAILED_HARD: {
-            if (accountType() == AccountType::MSA) {
-                data.msaToken.token = QString();
-                data.msaToken.refresh_token = QString();
-                data.msaToken.validity = Validity::None;
-                data.validity_ = Validity::None;
-            } else {
-                data.yggdrasilToken.token = QString();
-                data.yggdrasilToken.validity = Validity::None;
-                data.validity_ = Validity::None;
+            if (accountType() == AccountType::ElyBy) {
+                data.elyToken.token = QString();
+                data.elyToken.refresh_token = QString();
+                data.elyToken.validity = Validity::None;
             }
+            data.yggdrasilToken.token = QString();
+            data.yggdrasilToken.validity = Validity::None;
+            data.validity_ = Validity::None;
             emit changed();
         } break;
         case AccountTaskState::STATE_FAILED_GONE: {
@@ -215,6 +214,10 @@ bool MinecraftAccount::shouldRefresh() const
     if (isInUse()) {
         return false;
     }
+    // Legacy Microsoft accounts must never trigger any authentication.
+    if (isLegacyMicrosoft()) {
+        return false;
+    }
     switch (data.validity_) {
         case Validity::Certain: {
             break;
@@ -249,12 +252,18 @@ void MinecraftAccount::fillSession(AuthSessionPtr session)
     session->uuid = data.profileId();
     if (session->uuid.isEmpty())
         session->uuid = uuidFromUsername(session->player_name).toString(QUuid::Id128);
-    // 'legacy' or 'mojang', depending on account type
+    // 'offline' or 'mojang', depending on account type
     session->user_type = typeString();
     if (!session->access_token.isEmpty()) {
         session->session = "token:" + data.accessToken() + ":" + data.profileId();
     } else {
         session->session = "-";
+    }
+    // Ely.by sessions are verified by Ely.by's session server, the game is pointed at it with authlib-injector
+    if (data.type == AccountType::ElyBy) {
+        session->authlibInjectorApiUrl = ElyBy::AUTHLIB_INJECTOR_API_URL;
+    } else {
+        session->authlibInjectorApiUrl.clear();
     }
 }
 

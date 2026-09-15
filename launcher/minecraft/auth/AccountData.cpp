@@ -291,6 +291,8 @@ bool AccountData::resumeStateFromV3(QJsonObject data)
         type = AccountType::MSA;
     } else if (typeS == "Offline") {
         type = AccountType::Offline;
+    } else if (typeS == "ElyBy") {
+        type = AccountType::ElyBy;
     } else {
         qWarning() << "Failed to parse account data: type is not recognized.";
         return false;
@@ -304,23 +306,44 @@ bool AccountData::resumeStateFromV3(QJsonObject data)
         msaToken = tokenFromJSONV3(data, "msa");
         userToken = tokenFromJSONV3(data, "utoken");
         mojangservicesToken = tokenFromJSONV3(data, "xrp-mc");
+    } else if (type == AccountType::ElyBy) {
+        auto clientIDV = data.value("ely-client-id");
+        if (clientIDV.isString()) {
+            elyClientID = clientIDV.toString();
+        }
+        elyToken = tokenFromJSONV3(data, "ely");
     }
 
-    yggdrasilToken = tokenFromJSONV3(data, "ygg");
-    // versions before 7.2 used "offline" as the offline token
-    if (yggdrasilToken.token == "offline")
-        yggdrasilToken.token = "0";
+    if (type == AccountType::ElyBy) {
+        // the Ely.by OAuth2 access token is the game session token, it is not stored twice
+        yggdrasilToken = elyToken;
+        yggdrasilToken.refresh_token.clear();
+        yggdrasilToken.persistent = false;
+    } else {
+        yggdrasilToken = tokenFromJSONV3(data, "ygg");
+        // versions before 7.2 used "offline" as the offline token
+        if (yggdrasilToken.token == "offline")
+            yggdrasilToken.token = "0";
+    }
 
     minecraftProfile = profileFromJSONV3(data, "profile");
     if (!entitlementFromJSONV3(data, minecraftEntitlement)) {
-        if (minecraftProfile.validity != Validity::None) {
+        if (type == AccountType::MSA && minecraftProfile.validity != Validity::None) {
             minecraftEntitlement.canPlayMinecraft = true;
             minecraftEntitlement.ownsMinecraft = true;
             minecraftEntitlement.validity = Validity::Assumed;
         }
     }
 
-    validity_ = minecraftProfile.validity;
+    if (type == AccountType::MSA) {
+        // Microsoft authentication is not supported anymore. Keep the account visible so the user can remove it,
+        // but never try to refresh or use it.
+        validity_ = Validity::None;
+        accountState = AccountState::Disabled;
+        errorString = QObject::tr("Microsoft accounts are no longer supported. Please remove this account.");
+    } else {
+        validity_ = minecraftProfile.validity;
+    }
     return true;
 }
 
@@ -335,6 +358,10 @@ QJsonObject AccountData::saveState() const
         tokenToJSONV3(output, mojangservicesToken, "xrp-mc");
     } else if (type == AccountType::Offline) {
         output["type"] = "Offline";
+    } else if (type == AccountType::ElyBy) {
+        output["type"] = "ElyBy";
+        output["ely-client-id"] = elyClientID;
+        tokenToJSONV3(output, elyToken, "ely");
     }
 
     tokenToJSONV3(output, yggdrasilToken, "ygg");

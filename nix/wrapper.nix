@@ -41,7 +41,7 @@
     jdk17
     jdk8
   ],
-  msaClientID ? null,
+  elybyClientID ? null,
   textToSpeechSupport ? stdenv.hostPlatform.isLinux,
 }:
 
@@ -54,7 +54,7 @@ assert lib.assertMsg (
 ) "textToSpeechSupport only has an effect on Linux.";
 
 let
-  prismlauncher' = prismlauncher-unwrapped.override { inherit msaClientID; };
+  prismlauncher' = prismlauncher-unwrapped.override { inherit elybyClientID; };
 in
 
 symlinkJoin {

@@ -88,7 +88,9 @@ struct MinecraftProfile {
     Validity validity = Validity::None;
 };
 
-enum class AccountType { MSA, Offline };
+// NOTE: MSA is only kept so that accounts saved by older versions can still be loaded (and removed).
+// Microsoft authentication is not supported anymore.
+enum class AccountType { MSA, Offline, ElyBy };
 
 enum class AccountState { Unchecked, Offline, Working, Online, Disabled, Errored, Expired, Gone };
 
@@ -104,12 +106,17 @@ struct AccountData {
 
     QString lastError() const;
 
-    AccountType type = AccountType::MSA;
+    AccountType type = AccountType::Offline;
 
+    // legacy Microsoft account data, only preserved so it is not lost when saving
     QString msaClientID;
     Token msaToken;
     Token userToken;
     Token mojangservicesToken;
+
+    // Ely.by OAuth2 data
+    QString elyClientID;
+    Token elyToken;
 
     Token yggdrasilToken;
     MinecraftProfile minecraftProfile;

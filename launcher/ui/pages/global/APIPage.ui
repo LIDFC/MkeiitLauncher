@@ -235,9 +235,9 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_4">
           <item>
-           <widget class="QLabel" name="msaClientIDLabel">
+           <widget class="QLabel" name="elyByClientIDLabel">
             <property name="text">
-             <string>&amp;Microsoft Authentication</string>
+             <string>&amp;Ely.by OAuth2 Client ID</string>
             </property>
             <property name="textFormat">
              <enum>Qt::RichText</enum>
@@ -249,12 +249,12 @@
              <bool>true</bool>
             </property>
             <property name="buddy">
-             <cstring>msaClientID</cstring>
+             <cstring>elyByClientID</cstring>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="msaClientID">
+           <widget class="QLineEdit" name="elyByClientID">
             <property name="placeholderText">
              <string>Use Default</string>
             </property>
@@ -263,7 +263,10 @@
           <item>
            <widget class="QLabel" name="label_3">
             <property name="text">
-             <string>Note: you probably don't need to set this if logging in via Microsoft Authentication already works.</string>
+             <string>Note: required for logging in with Ely.by if the launcher was built without a client ID. See the &lt;a href=&quot;https://docs.ely.by/en/oauth.html&quot;&gt;Ely.by OAuth2 documentation&lt;/a&gt;.</string>
+            </property>
+            <property name="openExternalLinks">
+             <bool>true</bool>
             </property>
             <property name="textFormat">
              <enum>Qt::RichText</enum>

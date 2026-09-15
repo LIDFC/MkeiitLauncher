@@ -654,8 +654,10 @@ void MainWindow::repopulateAccountsMenu()
     auto accounts = APPLICATION->accounts();
     MinecraftAccountPtr defaultAccount = accounts->defaultAccount();
 
-    bool canChangeSkin = defaultAccount && (defaultAccount->accountType() == AccountType::MSA) && !defaultAccount->isActive();
-    ui->actionManageSkins->setEnabled(canChangeSkin);
+    // Skin management uses the Minecraft services API of Microsoft accounts, which are not supported anymore.
+    // Ely.by skins are managed on the Ely.by website.
+    ui->actionManageSkins->setVisible(false);
+    ui->actionManageSkins->setEnabled(false);
 
     QString active_profileId = "";
     if (defaultAccount) {
@@ -712,7 +714,6 @@ void MainWindow::repopulateAccountsMenu()
     connect(ui->actionNoDefaultAccount, &QAction::triggered, this, &MainWindow::changeActiveAccount);
 
     ui->accountsMenu->addSeparator();
-    ui->accountsMenu->addAction(ui->actionManageSkins);
     ui->accountsMenu->addAction(ui->actionManageAccounts);
 
     accountsButtonMenu->addActions(ui->accountsMenu->actions());

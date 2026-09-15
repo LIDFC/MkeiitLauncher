@@ -61,6 +61,7 @@
 #include "minecraft/launch/EnsureAvailableMemory.h"
 #include "minecraft/launch/EnsureOfflineLibraries.h"
 #include "minecraft/launch/ExtractNatives.h"
+#include "minecraft/launch/InjectAuthlib.h"
 #include "minecraft/launch/LauncherPartLaunch.h"
 #include "minecraft/launch/ModMinecraftJar.h"
 #include "minecraft/launch/PrintInstanceInfo.h"
@@ -1202,6 +1203,10 @@ LaunchTask* MinecraftInstance::createLaunchTask(AuthSessionPtr session, Minecraf
         process->appendStep(makeShared<ClaimAccount>(pptr, session));
         for (auto t : createUpdateTask()) {
             process->appendStep(makeShared<TaskStepWrapper>(pptr, t));
+        }
+        // point the game at the account's authentication server
+        if (!session->authlibInjectorApiUrl.isEmpty()) {
+            process->appendStep(makeShared<InjectAuthlib>(pptr, session));
         }
     } else {
         process->appendStep(makeShared<EnsureOfflineLibraries>(pptr, this));
