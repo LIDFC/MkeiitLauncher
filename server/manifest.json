@@ -1,9 +1,9 @@
 {
   "formatVersion": 1,
   "name": "Our Server",
-  "packVersion": "1.0.0",
+  "packVersion": "1.1.0",
   "server": {
-    "address": "",
+    "address": "mc.vin-off.site",
     "port": 25565
   },
   "minecraft": "1.21.11",
@@ -18,6 +18,27 @@
       "project": "P7dR8mSH",
       "versionId": "6qAuTtLR",
       "sha512": "852d3682c4f353fd0ca86546af8578513e8bcf628377fa9d49c556bc59c5024c69ab56c92fc6dfba11fed19e4316a3f5636e7e07fd3d96f7043b531aef59b637"
+    },
+    {
+      "name": "Sodium",
+      "source": "modrinth",
+      "project": "AANobbMI",
+      "versionId": "rkdTcxoT",
+      "sha512": "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9"
+    },
+    {
+      "name": "Xaero's Minimap",
+      "source": "modrinth",
+      "project": "1bokaNcj",
+      "versionId": "VNYP3B0c",
+      "sha512": "8d9d2eccd96f5c446ff0e88d7680cc8fee2d7a4a9192a6fdba71cefd503c5c7c419221320628a55576d90431fc86caff215566ff3dd52500a8cc5702d1559394"
+    },
+    {
+      "name": "Simple Voice Chat",
+      "source": "modrinth",
+      "project": "9eGKb6K1",
+      "versionId": "CN53keBo",
+      "sha512": "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a"
     }
   ]
 }

@@ -107,8 +107,12 @@ jobs:
       ##
 
       - name: Configure project
+        env:
+          # public OAuth2 client ID of the Ely.by application (repository variable, not a secret), empty = not configured
+          ELYBY_CLIENT_ID: ${{ vars.ELYBY_CLIENT_ID }}
         run: |
-          cmake --preset "$CMAKE_PRESET" -D VCPKG_HOST_TRIPLET="$VCPKG_TRIPLET" -D VCPKG_TARGET_TRIPLET="$VCPKG_TRIPLET"
+          cmake --preset "$CMAKE_PRESET" -D VCPKG_HOST_TRIPLET="$VCPKG_TRIPLET" -D VCPKG_TARGET_TRIPLET="$VCPKG_TRIPLET" \
+            -D Launcher_ELYBY_CLIENT_ID="$ELYBY_CLIENT_ID"
 
       - name: Run build
         run: |

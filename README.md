@@ -86,7 +86,7 @@ Note that if you build this software without removing the provided API keys in [
 
 If you do not agree with these terms and conditions, then remove the associated API keys from the [CMakeLists.txt](CMakeLists.txt) file by setting them to an empty string (`""`).
 
-Ely.by accounts require an OAuth2 client ID. Register an application with Ely.by (see the [Ely.by OAuth2 documentation](https://docs.ely.by/en/oauth.html)) and set `Launcher_ELYBY_CLIENT_ID`, or enter the client ID in Settings > APIs. Guest / Offline accounts work without it.
+Ely.by accounts require an OAuth2 client ID. Register an application with Ely.by (see the [Ely.by OAuth2 documentation](https://docs.ely.by/en/oauth.html)) and set `Launcher_ELYBY_CLIENT_ID`, or enter the client ID in Settings > APIs. GitHub Actions builds take it from the repository variable `ELYBY_CLIENT_ID` (Settings > Secrets and variables > Actions > Variables). Guest / Offline accounts work without it.
 
 ## License [![https://github.com/PrismLauncher/PrismLauncher/blob/develop/LICENSE](https://img.shields.io/github/license/PrismLauncher/PrismLauncher?label=License&logo=gnu&color=C4282D)](LICENSE)
 
