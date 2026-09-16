@@ -2,6 +2,7 @@
 #include "ServerStatusTask.h"
 
 #include <QDateTime>
+#include <QHostInfo>
 #include <QNetworkDatagram>
 #include <QRandomGenerator>
 #include <QTcpSocket>
@@ -13,7 +14,10 @@
 #include "ui/pages/instance/McResolver.h"
 
 namespace {
-constexpr int STATUS_TIMEOUT_MS = 10000;  // resolving, connecting and the status response
+constexpr int RESOLVE_TIMEOUT_MS = 15000;
+// some DNS servers need 10 seconds and more to answer that a domain has no SRV record, don't wait for them
+constexpr int SRV_LOOKUP_TIMEOUT_MS = 3000;
+constexpr int STATUS_TIMEOUT_MS = 10000;  // connecting and the status response
 constexpr int PING_TIMEOUT_MS = 3000;
 constexpr int QUERY_TIMEOUT_MS = 3000;
 constexpr qint32 PACKET_STATUS_RESPONSE = 0x00;
@@ -43,7 +47,7 @@ void ServerStatusTask::executeTask()
 {
     setStatus(tr("Checking the server status..."));
     m_stage = Stage::Resolving;
-    m_timeout.start(STATUS_TIMEOUT_MS);
+    m_timeout.start(RESOLVE_TIMEOUT_MS);
 
     // an IP address needs no DNS lookup
     if (QHostAddress address; address.setAddress(m_host)) {
@@ -65,11 +69,29 @@ void ServerStatusTask::executeTask()
     });
     connect(resolver, &McResolver::finished, resolver, &QObject::deleteLater);
     resolver->ping();
+
+    QTimer::singleShot(SRV_LOOKUP_TIMEOUT_MS, this, [this] {
+        if (m_stage != Stage::Resolving) {
+            return;
+        }
+        qCDebug(serverPackLogC).noquote() << "[ServerStatus] SRV lookup of" << m_host << "is slow, looking up the address directly";
+        QHostInfo::lookupHost(m_host, this, [this](const QHostInfo& hostInfo) {
+            if (m_stage != Stage::Resolving) {
+                return;
+            }
+            if (hostInfo.error() != QHostInfo::NoError || hostInfo.addresses().isEmpty()) {
+                markUnavailable(tr("The server address could not be resolved."));
+                return;
+            }
+            connectToServer(hostInfo.addresses().constFirst(), m_port);
+        });
+    });
 }
 
 void ServerStatusTask::connectToServer(const QHostAddress& address, quint16 port)
 {
     m_stage = Stage::Status;
+    m_timeout.start(STATUS_TIMEOUT_MS);
     m_address = address;
     m_socket = new QTcpSocket(this);
     connect(m_socket, &QTcpSocket::connected, this, [this, port] {
