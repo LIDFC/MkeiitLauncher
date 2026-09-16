@@ -1,8 +1,8 @@
 name: Publish
 
+# Disabled: it publishes Prism Launcher's winget package and fails for MkeiitLauncher releases.
 on:
-  release:
-    types: [ released ]
+  workflow_dispatch:
 
 permissions: {}
 

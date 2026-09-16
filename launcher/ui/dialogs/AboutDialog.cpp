@@ -54,7 +54,8 @@ QString getCreditsHtml()
     QString fileContent = QString::fromUtf8(dataFile.readAll());
     dataFile.close();
 
-    return fileContent.arg(QObject::tr("%1 Developers").arg(BuildConfig.LAUNCHER_DISPLAYNAME), QObject::tr("MultiMC Developers"),
+    // the credits list the developers of Prism Launcher, MkeiitLauncher is built on their work
+    return fileContent.arg(QObject::tr("%1 Developers").arg("Prism Launcher"), QObject::tr("MultiMC Developers"),
                            QObject::tr("With special thanks to"));
 }
 
