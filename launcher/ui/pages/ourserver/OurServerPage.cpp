@@ -583,10 +583,10 @@ void OurServerPage::updateView()
             item->setText(0, file.mod.name);
             item->setToolTip(0, file.fileName);
 
-            const auto status = statuses.constFind(file.mod.key());
+            const auto modStatus = statuses.constFind(file.mod.key());
             if (file.mod.optional) {
                 item->setData(0, Qt::UserRole, file.mod.key());
-                item->setCheckState(0, status != statuses.constEnd() ? Qt::Checked : Qt::Unchecked);
+                item->setCheckState(0, modStatus != statuses.constEnd() ? Qt::Checked : Qt::Unchecked);
                 if (busy) {
                     item->setFlags(item->flags() & ~Qt::ItemIsUserCheckable);
                 }
@@ -594,13 +594,13 @@ void OurServerPage::updateView()
                                                                    : tr("Optional mod: %1").arg(file.mod.description));
             }
 
-            if (status == statuses.constEnd()) {
+            if (modStatus == statuses.constEnd()) {
                 item->setText(1, tr("Not selected"));
                 item->setText(2, QString("—"));
                 item->setText(3, file.versionNumber);
                 continue;
             }
-            const auto& mod = *status;
+            const auto& mod = *modStatus;
             switch (mod.state) {
                 case ServerPack::ModState::UpToDate:
                     item->setText(1, tr("✓ Installed"));
