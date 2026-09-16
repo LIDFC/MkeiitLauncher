@@ -249,6 +249,19 @@ class ServerPackTest : public QObject {
         QCOMPARE(loaderComponentUid(parsed->loaderType), QString("net.fabricmc.fabric-loader"));
     }
 
+    void test_parseManifestOptionalMods()
+    {
+        auto iris = modJson("Iris", "YL57xq9U", "fDpuVzVr", shaB);
+        iris["optional"] = true;
+        iris["description"] = "  Shaders  ";
+        const auto parsed = parseManifest(toJson(manifestJson(QJsonArray{ modJson("Sodium", "AANobbMI", "Yp8wLY1P", shaA), iris })));
+        QVERIFY2(parsed.has_value(), parsed ? "" : qPrintable(parsed.error()));
+        QVERIFY(!parsed->mods[0].optional);
+        QVERIFY(parsed->mods[0].description.isEmpty());
+        QVERIFY(parsed->mods[1].optional);
+        QCOMPARE(parsed->mods[1].description, QString("Shaders"));
+    }
+
     void test_parseManifestWithoutServer()
     {
         auto json = manifestJson(QJsonArray{});
@@ -321,6 +334,18 @@ class ServerPackTest : public QObject {
         auto directMod = validMod;
         directMod["source"] = "direct";
         QTest::newRow("unsupported source") << toJson(manifestJson(QJsonArray{ directMod }));
+
+        auto optionalText = validMod;
+        optionalText["optional"] = "yes";
+        QTest::newRow("optional is not a boolean") << toJson(manifestJson(QJsonArray{ optionalText }));
+
+        auto descriptionNumber = validMod;
+        descriptionNumber["description"] = 42;
+        QTest::newRow("description is not a string") << toJson(manifestJson(QJsonArray{ descriptionNumber }));
+
+        auto longDescription = validMod;
+        longDescription["description"] = QString(MAX_MOD_DESCRIPTION_LENGTH + 1, 'x');
+        QTest::newRow("description too long") << toJson(manifestJson(QJsonArray{ longDescription }));
 
         QTest::newRow("duplicate mod") << toJson(manifestJson(QJsonArray{ validMod, modJson("Sodium 2", "AANobbMI", "Ab12Cd34", shaB) }));
     }
@@ -580,6 +605,53 @@ class ServerPackTest : public QObject {
         QCOMPARE(plan.releasedFiles, QStringList{ "edited.jar" });
         QVERIFY(plan.lockChanged);
         QVERIFY(plan.needsUpdate());
+    }
+
+    void test_selectTargetsOptionalMods()
+    {
+        const auto required = target("AAAAAAAA", "a0000001", "a.jar", shaA);
+        auto shaders = target("BBBBBBBB", "b0000001", "shaders.jar", shaB);
+        shaders.mod.optional = true;
+
+        const auto disabled = selectTargets({ required, shaders }, {});
+        QCOMPARE(disabled.size(), 1);
+        QCOMPARE(disabled[0].fileName, QString("a.jar"));
+
+        const auto enabled = selectTargets({ required, shaders }, { "modrinth:BBBBBBBB" });
+        QCOMPARE(enabled.size(), 2);
+
+        // required mods are installed whatever the player chose
+        const auto unrelated = selectTargets({ required, shaders }, { "modrinth:AAAAAAAA" });
+        QCOMPARE(unrelated.size(), 1);
+        QCOMPARE(unrelated[0].fileName, QString("a.jar"));
+    }
+
+    void test_planDisablingOptionalModRemovesOnlyUnmodifiedFile()
+    {
+        const auto required = target("AAAAAAAA", "a0000001", "a.jar", shaA);
+        auto shaders = target("BBBBBBBB", "b0000001", "shaders.jar", shaB);
+        shaders.mod.optional = true;
+        Lock lock;
+        lock.packVersion = "1.1.0";
+        lock.files = { lockEntry(required), lockEntry(shaders) };
+
+        // enabled and installed: nothing to do
+        auto plan = buildPlan(manifest(), selectTargets({ required, shaders }, { "modrinth:BBBBBBBB" }), lock,
+                              hasher({ { "a.jar", shaA }, { "shaders.jar", shaB } }));
+        QVERIFY(plan.isUpToDate());
+
+        // disabled: the managed file is removed, the required mod stays
+        plan =
+            buildPlan(manifest(), selectTargets({ required, shaders }, {}), lock, hasher({ { "a.jar", shaA }, { "shaders.jar", shaB } }));
+        QCOMPARE(plan.removals, QStringList{ "shaders.jar" });
+        QVERIFY(plan.needsUpdate());
+        QCOMPARE(plan.mods.size(), 1);
+
+        // disabled but changed by the player: the file is kept and no longer managed
+        plan = buildPlan(manifest(), selectTargets({ required, shaders }, {}), lock,
+                         hasher({ { "a.jar", shaA }, { "shaders.jar", shaUser } }));
+        QVERIFY(plan.removals.isEmpty());
+        QCOMPARE(plan.releasedFiles, QStringList{ "shaders.jar" });
     }
 
     void test_packVersionIsNotTheOnlyUpdateSignal()

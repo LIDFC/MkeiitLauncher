@@ -22,6 +22,17 @@ bool Plan::needsUpdate() const
     return count(ModState::Outdated) > 0 || count(ModState::Corrupted) > 0 || !removals.isEmpty() || (downloads.isEmpty() && lockChanged);
 }
 
+QList<ResolvedFile> selectTargets(const QList<ResolvedFile>& resolved, const QSet<QString>& enabledOptionalMods)
+{
+    QList<ResolvedFile> targets;
+    for (const auto& file : resolved) {
+        if (!file.mod.optional || enabledOptionalMods.contains(file.mod.key())) {
+            targets.append(file);
+        }
+    }
+    return targets;
+}
+
 Plan buildPlan(const Manifest& manifest, const QList<ResolvedFile>& targets, const Lock& lock, const FileHasher& hashOf)
 {
     Plan plan;

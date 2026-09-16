@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "our-server-site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--env-file=I:/MkeiitLauncher-develop/our-server-site/.env",
+        "I:/MkeiitLauncher-develop/our-server-site/server/src/index.ts"
+      ],
+      "port": 3000
+    }
+  ]
+}

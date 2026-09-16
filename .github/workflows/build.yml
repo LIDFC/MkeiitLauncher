@@ -110,9 +110,17 @@ jobs:
         env:
           # public OAuth2 client ID of the Ely.by application (repository variable, not a secret), empty = not configured
           ELYBY_CLIENT_ID: ${{ vars.ELYBY_CLIENT_ID }}
+          # release builds (release.yml runs this workflow for a pushed tag) take the version from the tag
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: |
+          LAUNCHER_VERSION="${RELEASE_TAG#v}"
+          if [[ ! "$LAUNCHER_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            LAUNCHER_VERSION=""
+          fi
+          echo "Launcher version from tag: ${LAUNCHER_VERSION:-none, using the default}"
           cmake --preset "$CMAKE_PRESET" -D VCPKG_HOST_TRIPLET="$VCPKG_TRIPLET" -D VCPKG_TARGET_TRIPLET="$VCPKG_TRIPLET" \
-            -D Launcher_ELYBY_CLIENT_ID="$ELYBY_CLIENT_ID"
+            -D Launcher_ELYBY_CLIENT_ID="$ELYBY_CLIENT_ID" \
+            -D Launcher_VERSION_OVERRIDE="$LAUNCHER_VERSION"
 
       - name: Run build
         run: |

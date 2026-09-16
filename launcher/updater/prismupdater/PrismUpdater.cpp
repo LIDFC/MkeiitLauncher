@@ -56,6 +56,18 @@ namespace fs = std::filesystem;
 
 #include "MMCZip.h"
 
+/**
+ * Version of a release tag. Tags look like "v1.1.0", and Version would compare the leading "v" as text that is greater
+ * than any number, so every release would always look newer than the installed launcher.
+ */
+static Version versionFromTag(const QString& tag)
+{
+    if (tag.size() > 1 && (tag.front() == 'v' || tag.front() == 'V') && tag.at(1).isDigit()) {
+        return Version(tag.mid(1));
+    }
+    return Version(tag);
+}
+
 /** output to the log file */
 void appDebugOutput(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
@@ -321,7 +333,7 @@ PrismUpdaterApp::PrismUpdaterApp(int& argc, char** argv) : QApplication(argc, ar
     m_printOnly = parser.isSet("list");
     auto user_version = parser.value("install-version");
     if (!user_version.isEmpty()) {
-        m_userSelectedVersion = Version(user_version);
+        m_userSelectedVersion = versionFromTag(user_version);
     }
     m_selectUI = parser.isSet("select-ui");
     m_allowDowngrade = parser.isSet("allow-downgrade");
@@ -1187,7 +1199,7 @@ int PrismUpdaterApp::parseReleasePage(const QByteArray* response)
             release.draft = Json::requireBoolean(release_obj, "draft");
             release.prerelease = Json::requireBoolean(release_obj, "prerelease");
             release.body = release_obj["body"].toString();
-            release.version = Version(release.tag_name);
+            release.version = versionFromTag(release.tag_name);
 
             auto release_assets_obj = Json::requireArray(release_obj, "assets");
             for (auto asset_json : release_assets_obj) {

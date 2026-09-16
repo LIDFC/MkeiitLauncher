@@ -122,9 +122,14 @@ std::expected<Manifest, QString> parseManifest(const QByteArray& data)
         mod.project = obj.value("project").toString();
         mod.versionId = obj.value("versionId").toString();
         mod.sha512 = obj.value("sha512").toString().toLower();
+        const auto optionalValue = obj.value("optional");
+        const auto descriptionValue = obj.value("description");
+        mod.optional = optionalValue.toBool(false);
+        mod.description = descriptionValue.toString().trimmed();
 
         const QString displayName = mod.name.isEmpty() ? mod.project : mod.name;
-        if (!value.isObject() || mod.name.isEmpty() || mod.name.size() > 128) {
+        if (!value.isObject() || mod.name.isEmpty() || mod.name.size() > 128 || (!optionalValue.isUndefined() && !optionalValue.isBool()) ||
+            (!descriptionValue.isUndefined() && !descriptionValue.isString()) || mod.description.size() > MAX_MOD_DESCRIPTION_LENGTH) {
             return std::unexpected(
                 QCoreApplication::translate("ServerPack", "The server pack manifest entry \"%1\" is invalid.").arg(displayName));
         }

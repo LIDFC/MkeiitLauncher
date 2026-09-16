@@ -2,6 +2,7 @@
 #pragma once
 
 #include <QList>
+#include <QSet>
 #include <QString>
 #include <QStringList>
 #include <functional>
@@ -44,6 +45,12 @@ struct Plan {
     //! something that is already installed has to change (as opposed to only installing missing mods)
     bool needsUpdate() const;
 };
+
+/**
+ * Mods that belong on disk: every required mod plus the optional mods the player enabled (keys as ManifestMod::key()).
+ * A disabled optional mod is simply not a target, so buildPlan removes it like any mod that left the pack.
+ */
+QList<ResolvedFile> selectTargets(const QList<ResolvedFile>& resolved, const QSet<QString>& enabledOptionalMods);
 
 //! SHA-512 (lowercase hex) of a file in the mods folder, std::nullopt if there is no such file
 using FileHasher = std::function<std::optional<QString>(const QString& fileName)>;

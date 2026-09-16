@@ -899,6 +899,7 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
         // Our Server: overrides for the manifest URL and the server address (host or host:port)
         m_settings->registerSetting("OurServerManifestURLOverride", "");
         m_settings->registerSetting("OurServerAddressOverride", "");
+        m_settings->registerSetting("OurServerOptionalMods", "");
 
         // Custom Flame API Key
         m_settings->registerSetting({ "FlameKeyOverride", "CFKeyOverride" }, "");

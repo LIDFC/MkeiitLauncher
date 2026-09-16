@@ -3,6 +3,7 @@
 
 #include <QByteArray>
 #include <QHash>
+#include <QSet>
 #include <QUrl>
 #include <QUuid>
 
@@ -31,7 +32,7 @@ class ServerPackTask : public Task {
     using Ptr = shared_qobject_ptr<ServerPackTask>;
 
     //! modsDir and lockPath may be empty in Check mode when the server instance does not exist yet
-    ServerPackTask(QUrl manifestUrl, QString modsDir, QString lockPath, Mode mode);
+    ServerPackTask(QUrl manifestUrl, QString modsDir, QString lockPath, Mode mode, QSet<QString> enabledOptionalMods = {});
     ~ServerPackTask() override = default;
 
     Mode mode() const { return m_mode; }
@@ -41,6 +42,8 @@ class ServerPackTask : public Task {
 
     bool hasPlan() const { return m_hasPlan; }
     const ServerPack::Plan& plan() const { return m_plan; }
+    //! every mod of the manifest, including the optional mods the player did not enable
+    const QList<ServerPack::ResolvedFile>& resolvedFiles() const { return m_resolved; }
     const ServerPack::Lock& installedLock() const { return m_lock; }
 
     bool canAbort() const override { return true; }
@@ -69,11 +72,13 @@ class ServerPackTask : public Task {
     QString m_modsDir;
     QString m_lockPath;
     Mode m_mode;
+    QSet<QString> m_enabledOptionalMods;
 
     bool m_hasManifest = false;
     bool m_hasPlan = false;
     ServerPack::Manifest m_manifest;
     ServerPack::Lock m_lock;
+    QList<ServerPack::ResolvedFile> m_resolved;
     QList<ServerPack::ResolvedFile> m_targets;
     ServerPack::Plan m_plan;
 

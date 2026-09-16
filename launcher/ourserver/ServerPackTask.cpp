@@ -37,8 +37,12 @@ const char* stateName(ModState state)
 }
 }  // namespace
 
-ServerPackTask::ServerPackTask(QUrl manifestUrl, QString modsDir, QString lockPath, Mode mode)
-    : m_manifestUrl(std::move(manifestUrl)), m_modsDir(std::move(modsDir)), m_lockPath(std::move(lockPath)), m_mode(mode)
+ServerPackTask::ServerPackTask(QUrl manifestUrl, QString modsDir, QString lockPath, Mode mode, QSet<QString> enabledOptionalMods)
+    : m_manifestUrl(std::move(manifestUrl))
+    , m_modsDir(std::move(modsDir))
+    , m_lockPath(std::move(lockPath))
+    , m_mode(mode)
+    , m_enabledOptionalMods(std::move(enabledOptionalMods))
 {}
 
 void ServerPackTask::executeTask()
@@ -116,6 +120,7 @@ void ServerPackTask::onManifestDownloaded()
     qCInfo(serverPackLogC) << "[ServerPack] Installed version:" << (m_lock.packVersion.isEmpty() ? QString("none") : m_lock.packVersion);
 
     if (m_manifest.mods.isEmpty()) {
+        m_resolved.clear();
         m_targets.clear();
         createPlan();
         return;
@@ -158,7 +163,10 @@ void ServerPackTask::onModrinthResponse()
         emitFailed(resolved.error());
         return;
     }
-    m_targets = *resolved;
+    // every mod is validated, also the optional ones that are not installed, so a broken manifest is never applied partly
+    m_resolved = *resolved;
+    m_targets = selectTargets(m_resolved, m_enabledOptionalMods);
+    qCInfo(serverPackLogC) << "[ServerPack]" << (m_resolved.size() - m_targets.size()) << "optional mods are not enabled";
     createPlan();
 }
 

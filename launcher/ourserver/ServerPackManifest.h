@@ -17,13 +17,16 @@ namespace ServerPack {
 
 inline constexpr int MANIFEST_FORMAT_VERSION = 1;
 inline constexpr int DEFAULT_SERVER_PORT = 25565;
+inline constexpr qsizetype MAX_MOD_DESCRIPTION_LENGTH = 200;
 
 struct ManifestMod {
     QString name;
-    QString source;     // only "modrinth" is supported for now, "direct" is reserved
-    QString project;    // Modrinth project ID
-    QString versionId;  // Modrinth version ID, pins the exact version
-    QString sha512;     // lowercase hex
+    QString source;         // only "modrinth" is supported for now, "direct" is reserved
+    QString project;        // Modrinth project ID
+    QString versionId;      // Modrinth version ID, pins the exact version
+    QString sha512;         // lowercase hex
+    bool optional = false;  // only installed when the player enables it
+    QString description;    // shown to the player for optional mods
 
     //! identifies a mod across manifest versions
     QString key() const { return source + ':' + project; }

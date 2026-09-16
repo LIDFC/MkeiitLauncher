@@ -5,10 +5,12 @@
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QHeaderView>
 #include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <utility>
@@ -188,6 +190,16 @@ OurServerPage::OurServerPage(QWidget* parent) : QWidget(parent)
         checkServerPack();
         refreshServerStatus();
     });
+    // optional mods: the choice is saved and the pack checked again; downloads start with the pack button as usual
+    connect(m_modList, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem* item, int column) {
+        const auto key = item->data(0, Qt::UserRole).toString();
+        if (column != 0 || key.isEmpty()) {
+            return;
+        }
+        OurServer::setOptionalModEnabled(key, item->checkState(0) == Qt::Checked);
+        // the list is rebuilt by the check, never inside the signal of one of its items
+        QTimer::singleShot(0, this, [this] { checkServerPack(); });
+    });
 
     // the status is only refreshed while the category is visible
     m_statusTimer.setInterval(STATUS_REFRESH_INTERVAL_MS);
@@ -248,7 +260,8 @@ void OurServerPage::checkServerPack(AfterCheck afterCheck)
     m_afterCheck = afterCheck;
     const auto* instance = OurServer::findInstance();
     startTask(new ServerPackTask(OurServer::manifestUrl(), instance ? instance->modsRoot() : QString(),
-                                 instance ? OurServer::lockPath(instance) : QString(), ServerPackTask::Mode::Check));
+                                 instance ? OurServer::lockPath(instance) : QString(), ServerPackTask::Mode::Check,
+                                 OurServer::enabledOptionalMods()));
 }
 
 void OurServerPage::installServerPack(bool launchAfterwards)
@@ -279,8 +292,8 @@ void OurServerPage::installServerPack(bool launchAfterwards)
 
     OurServer::applyComponents(instance, *m_manifest);
     m_launchAfterApply = launchAfterwards;
-    startTask(
-        new ServerPackTask(OurServer::manifestUrl(), instance->modsRoot(), OurServer::lockPath(instance), ServerPackTask::Mode::Apply));
+    startTask(new ServerPackTask(OurServer::manifestUrl(), instance->modsRoot(), OurServer::lockPath(instance), ServerPackTask::Mode::Apply,
+                                 OurServer::enabledOptionalMods()));
 }
 
 void OurServerPage::startTask(ServerPackTask* task)
@@ -311,6 +324,7 @@ void OurServerPage::onTaskFinished()
     }
     if (task->hasPlan()) {
         m_plan = task->plan();
+        m_resolved = task->resolvedFiles();
         m_lock = task->installedLock();
     } else if (!succeeded) {
         m_plan.reset();
@@ -549,12 +563,44 @@ void OurServerPage::updateView()
 
     // mods of the server pack
     m_modsGroup->setTitle(manifest ? tr("Server pack %1").arg(manifest->packVersion) : tr("Mods of the server pack"));
+    const QSignalBlocker blockModSignals(m_modList);
     m_modList->clear();
     if (m_plan) {
+        QHash<QString, ServerPack::ModStatus> statuses;
         for (const auto& mod : m_plan->mods) {
+            statuses.insert(mod.target.mod.key(), mod);
+        }
+        // the manifest order, with the optional mods the player did not enable
+        QList<ServerPack::ResolvedFile> files = m_resolved;
+        if (files.isEmpty()) {
+            for (const auto& mod : m_plan->mods) {
+                files.append(mod.target);
+            }
+        }
+
+        for (const auto& file : files) {
             auto* item = new QTreeWidgetItem(m_modList);
-            item->setText(0, mod.target.mod.name);
-            item->setToolTip(0, mod.target.fileName);
+            item->setText(0, file.mod.name);
+            item->setToolTip(0, file.fileName);
+
+            const auto status = statuses.constFind(file.mod.key());
+            if (file.mod.optional) {
+                item->setData(0, Qt::UserRole, file.mod.key());
+                item->setCheckState(0, status != statuses.constEnd() ? Qt::Checked : Qt::Unchecked);
+                if (busy) {
+                    item->setFlags(item->flags() & ~Qt::ItemIsUserCheckable);
+                }
+                item->setToolTip(0, file.mod.description.isEmpty() ? tr("Optional mod, tick it to install it")
+                                                                   : tr("Optional mod: %1").arg(file.mod.description));
+            }
+
+            if (status == statuses.constEnd()) {
+                item->setText(1, tr("Not selected"));
+                item->setText(2, QString("—"));
+                item->setText(3, file.versionNumber);
+                continue;
+            }
+            const auto& mod = *status;
             switch (mod.state) {
                 case ServerPack::ModState::UpToDate:
                     item->setText(1, tr("✓ Installed"));

@@ -117,7 +117,7 @@ runs:
         cp -r ${{ env.INSTALL_DIR }} ${{ env.INSTALL_PORTABLE_DIR }}  # cmake install on Windows is slow, let's just copy instead
         cmake --install ${{ env.BUILD_DIR }} --config ${{ inputs.build-type }} --prefix ${{ env.INSTALL_PORTABLE_DIR }} --component portable
 
-        Get-ChildItem ${{ env.INSTALL_PORTABLE_DIR }} -Recurse | ForEach FullName | Resolve-Path -Relative | %{ $_.TrimStart('.\') } | %{ $_.TrimStart('${{ env.INSTALL_PORTABLE_DIR }}') } | %{ $_.TrimStart('\') } | Out-File -FilePath ${{ env.INSTALL_DIR }}/manifest.txt
+        Get-ChildItem ${{ env.INSTALL_PORTABLE_DIR }} -Recurse | ForEach FullName | Resolve-Path -Relative | %{ $_.TrimStart('.\') } | %{ $_.TrimStart('${{ env.INSTALL_PORTABLE_DIR }}') } | %{ $_.TrimStart('\') } | Out-File -FilePath ${{ env.INSTALL_PORTABLE_DIR }}/manifest.txt
 
     - name: Package (installer)
       shell: pwsh

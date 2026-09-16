@@ -81,8 +81,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.ref }}
-          name: Prism Launcher ${{ env.VERSION }}
-          draft: true
+          name: MkeiitLauncher ${{ env.VERSION }}
+          # published right away, the launcher updater does not see draft releases
+          draft: false
           prerelease: false
           fail_on_unmatched_files: true
           files: |

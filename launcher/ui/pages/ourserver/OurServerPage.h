@@ -104,6 +104,8 @@ class OurServerPage : public QWidget {
     ServerPackTask::Ptr m_task;
     std::optional<ServerPack::Manifest> m_manifest;
     std::optional<ServerPack::Plan> m_plan;
+    //! all mods of the manifest, including optional mods that are not enabled
+    QList<ServerPack::ResolvedFile> m_resolved;
     ServerPack::Lock m_lock;
     QString m_error;
     AfterCheck m_afterCheck = AfterCheck::Nothing;
