@@ -158,12 +158,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     setAccessibleName(BuildConfig.LAUNCHER_DISPLAYNAME);
 #endif
 
-    // MkeiitLauncher shows no news: without a feed URL the news toolbar is removed, so no saved window state can bring it back
+    // MkeiitLauncher shows no news: without a feed URL the news toolbar is taken out of the window.
+    // The widget itself must stay alive, ui->retranslateUi() still sets its title. It gets another object name, so
+    // restoreState() cannot find it in a window state saved by an older version and show it again.
     if (BuildConfig.NEWS_RSS_URL.isEmpty()) {
         ui->actionMoreNews->setVisible(false);
         removeToolBar(ui->newsToolBar);
-        delete ui->newsToolBar;
-        ui->newsToolBar = nullptr;
+        ui->newsToolBar->setObjectName(QStringLiteral("disabledNewsToolBar"));
     }
 
     // instance toolbar stuff
@@ -196,7 +197,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
         ui->instanceToolBar->setVisibilityState(QByteArray::fromBase64(instanceToolbarSetting->get().toString().toUtf8()));
 
-        if (ui->newsToolBar) {
+        if (!BuildConfig.NEWS_RSS_URL.isEmpty()) {
             ui->instanceToolBar->addContextMenuAction(ui->newsToolBar->toggleViewAction());
         }
         ui->instanceToolBar->addContextMenuAction(ui->instanceToolBar->toggleViewAction());
@@ -259,7 +260,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // add the toolbar toggles to the view menu
     ui->viewMenu->addAction(ui->instanceToolBar->toggleViewAction());
-    if (ui->newsToolBar) {
+    if (!BuildConfig.NEWS_RSS_URL.isEmpty()) {
         ui->viewMenu->addAction(ui->newsToolBar->toggleViewAction());
     }
 
@@ -291,7 +292,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Add the news label to the news toolbar.
     m_newsChecker.reset(new NewsChecker(APPLICATION->network(), BuildConfig.NEWS_RSS_URL));
-    if (ui->newsToolBar) {
+    if (!BuildConfig.NEWS_RSS_URL.isEmpty()) {
         newsLabel = new QToolButton();
         newsLabel->setIcon(QIcon::fromTheme("news"));
         newsLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -424,7 +425,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     // auto accounts = APPLICATION->accounts();
 
     // load the news
-    if (ui->newsToolBar) {
+    if (!BuildConfig.NEWS_RSS_URL.isEmpty()) {
         m_newsChecker->reloadNews();
         updateNewsLabel();
     }
@@ -517,9 +518,7 @@ void MainWindow::lockToolbars(bool state)
 {
     ui->mainToolBar->setMovable(!state);
     ui->instanceToolBar->setMovable(!state);
-    if (ui->newsToolBar) {
-        ui->newsToolBar->setMovable(!state);
-    }
+    ui->newsToolBar->setMovable(!state);
     APPLICATION->settings()->set("ToolbarsLocked", state);
 }
 
@@ -533,18 +532,14 @@ void MainWindow::konamiTriggered()
         ui->mainToolBar->setStyleSheet("");
         ui->instanceToolBar->setStyleSheet("");
         ui->centralWidget->setStyleSheet("");
-        if (ui->newsToolBar) {
-            ui->newsToolBar->setStyleSheet("");
-        }
+        ui->newsToolBar->setStyleSheet("");
         ui->statusBar->setStyleSheet("");
         qDebug() << "Super Secret Mode DEACTIVATED!";
     } else {
         ui->mainToolBar->setStyleSheet(stylesheet);
         ui->instanceToolBar->setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1," + gradient);
         ui->centralWidget->setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1," + gradient);
-        if (ui->newsToolBar) {
-            ui->newsToolBar->setStyleSheet(stylesheet);
-        }
+        ui->newsToolBar->setStyleSheet(stylesheet);
         ui->statusBar->setStyleSheet(stylesheet);
         qDebug() << "Super Secret Mode ACTIVATED!";
     }
