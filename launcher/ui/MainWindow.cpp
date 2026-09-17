@@ -158,6 +158,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     setAccessibleName(BuildConfig.LAUNCHER_DISPLAYNAME);
 #endif
 
+    // MkeiitLauncher shows no news: without a feed URL the news toolbar is removed, so no saved window state can bring it back
+    if (BuildConfig.NEWS_RSS_URL.isEmpty()) {
+        ui->actionMoreNews->setVisible(false);
+        removeToolBar(ui->newsToolBar);
+        delete ui->newsToolBar;
+        ui->newsToolBar = nullptr;
+    }
+
     // instance toolbar stuff
     {
         // Qt doesn't like vertical moving toolbars, so we have to force them...
@@ -188,7 +196,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
         ui->instanceToolBar->setVisibilityState(QByteArray::fromBase64(instanceToolbarSetting->get().toString().toUtf8()));
 
-        ui->instanceToolBar->addContextMenuAction(ui->newsToolBar->toggleViewAction());
+        if (ui->newsToolBar) {
+            ui->instanceToolBar->addContextMenuAction(ui->newsToolBar->toggleViewAction());
+        }
         ui->instanceToolBar->addContextMenuAction(ui->instanceToolBar->toggleViewAction());
         ui->instanceToolBar->addContextMenuAction(ui->actionToggleStatusBar);
         ui->instanceToolBar->addContextMenuAction(ui->actionLockToolbars);
@@ -249,7 +259,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // add the toolbar toggles to the view menu
     ui->viewMenu->addAction(ui->instanceToolBar->toggleViewAction());
-    ui->viewMenu->addAction(ui->newsToolBar->toggleViewAction());
+    if (ui->newsToolBar) {
+        ui->viewMenu->addAction(ui->newsToolBar->toggleViewAction());
+    }
 
     updateThemeMenu();
     updateMainToolBar();
@@ -278,8 +290,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     }
 
     // Add the news label to the news toolbar.
-    {
-        m_newsChecker.reset(new NewsChecker(APPLICATION->network(), BuildConfig.NEWS_RSS_URL));
+    m_newsChecker.reset(new NewsChecker(APPLICATION->network(), BuildConfig.NEWS_RSS_URL));
+    if (ui->newsToolBar) {
         newsLabel = new QToolButton();
         newsLabel->setIcon(QIcon::fromTheme("news"));
         newsLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -412,7 +424,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     // auto accounts = APPLICATION->accounts();
 
     // load the news
-    {
+    if (ui->newsToolBar) {
         m_newsChecker->reloadNews();
         updateNewsLabel();
     }
@@ -505,7 +517,9 @@ void MainWindow::lockToolbars(bool state)
 {
     ui->mainToolBar->setMovable(!state);
     ui->instanceToolBar->setMovable(!state);
-    ui->newsToolBar->setMovable(!state);
+    if (ui->newsToolBar) {
+        ui->newsToolBar->setMovable(!state);
+    }
     APPLICATION->settings()->set("ToolbarsLocked", state);
 }
 
@@ -519,14 +533,18 @@ void MainWindow::konamiTriggered()
         ui->mainToolBar->setStyleSheet("");
         ui->instanceToolBar->setStyleSheet("");
         ui->centralWidget->setStyleSheet("");
-        ui->newsToolBar->setStyleSheet("");
+        if (ui->newsToolBar) {
+            ui->newsToolBar->setStyleSheet("");
+        }
         ui->statusBar->setStyleSheet("");
         qDebug() << "Super Secret Mode DEACTIVATED!";
     } else {
         ui->mainToolBar->setStyleSheet(stylesheet);
         ui->instanceToolBar->setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1," + gradient);
         ui->centralWidget->setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1," + gradient);
-        ui->newsToolBar->setStyleSheet(stylesheet);
+        if (ui->newsToolBar) {
+            ui->newsToolBar->setStyleSheet(stylesheet);
+        }
         ui->statusBar->setStyleSheet(stylesheet);
         qDebug() << "Super Secret Mode ACTIVATED!";
     }
@@ -812,6 +830,9 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* ev)
 
 void MainWindow::updateNewsLabel()
 {
+    if (!newsLabel) {
+        return;
+    }
     if (m_newsChecker->isLoadingNews()) {
         newsLabel->setText(tr("Loading news..."));
         newsLabel->setEnabled(false);

@@ -125,7 +125,8 @@ void ElyByDeviceCodeStep::deviceAuthorizationFinished(QByteArray* response)
                       tr("Device authorization failed: %1").arg(rsp.error_description.isEmpty() ? rsp.error : rsp.error_description));
         return;
     }
-    if (!m_request->wasSuccessful() || m_request->error() != QNetworkReply::NoError) {
+    // Net::Request never switches its task state to Succeeded, so the network error is the only reliable signal
+    if (m_request->error() != QNetworkReply::NoError) {
         qWarning() << "Device authorization failed:" << m_request->error() << m_request->errorString();
         emit finished(AccountTaskState::STATE_FAILED_HARD, tr("Device authorization failed: %1").arg(m_request->errorString()));
         return;
@@ -218,7 +219,7 @@ void ElyByDeviceCodeStep::authenticationFinished(QByteArray* response)
                       tr("Ely.by login failed: %1").arg(rsp.errorDescription.isEmpty() ? rsp.error : rsp.errorDescription));
         return;
     }
-    if (!m_request->wasSuccessful() || m_request->error() != QNetworkReply::NoError) {
+    if (m_request->error() != QNetworkReply::NoError) {
         startPollTimer();  // it failed so just try again without increasing the interval
         return;
     }
