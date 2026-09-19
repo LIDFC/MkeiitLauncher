@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "name": "Our Server",
-  "packVersion": "1.2.0",
+  "packVersion": "1.2.1",
   "server": {
     "address": "mc.vin-off.site",
     "port": 25565
@@ -23,8 +23,9 @@
       "name": "Sodium",
       "source": "modrinth",
       "project": "AANobbMI",
-      "versionId": "rkdTcxoT",
-      "sha512": "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9"
+      "versionId": "UddlN6L4",
+      "sha512": "d7f035d6112eaac92cf0f11e4426db631fca5a7115dd355c2126efee4255b648a0102552bbf7b22a7eae9203d08f8740435842bfddcd94e2434f51b57ee9c641",
+      "description": "Оптимизация графики. Версия 0.8.7 — та, с которой собран Iris."
     },
     {
       "name": "Xaero's Minimap",
