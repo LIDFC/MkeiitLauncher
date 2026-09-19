@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "name": "Our Server",
-  "packVersion": "1.1.0",
+  "packVersion": "1.2.0",
   "server": {
     "address": "mc.vin-off.site",
     "port": 25565
@@ -39,6 +39,39 @@
       "project": "9eGKb6K1",
       "versionId": "CN53keBo",
       "sha512": "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a"
+    },
+    {
+      "name": "LambDynamicLights",
+      "source": "modrinth",
+      "project": "yBW8D80W",
+      "versionId": "5Tp7kdU0",
+      "sha512": "df006fad702f713fa93feaa21ead00f446aa79e1771b5e049844842c7701d3a8a1b360a996c28f79c79a941e95ef63d27bfc563b5bec2ab8bf96eba0b2232fb8",
+      "description": "Факел в руке и другие источники света светят по-настоящему."
+    },
+    {
+      "name": "BetterF3",
+      "source": "modrinth",
+      "project": "8shC1gFX",
+      "versionId": "Qw1nhj7u",
+      "sha512": "5f9f2c7129508a3e27c8f275eb514d53451ba19ffb90aa23c256253c84585a21b4624b24cd51ed3ee28cc1f02fc5fe8bcdbeb48033a6e910f15653c4455b4c50",
+      "description": "Аккуратный и настраиваемый экран отладки по F3."
+    },
+    {
+      "name": "Chat Heads",
+      "source": "modrinth",
+      "project": "Wb5oqrBJ",
+      "versionId": "uQ4oSnyu",
+      "sha512": "77c19989386aec630698fde57d93a3f95f277766c4c52b1dea9aa8a927e20cce90530dbe49c05c120ab5f52adcdc8d6e55b67b8bf038794359ae84108f6cb230",
+      "description": "Голова игрока рядом с его сообщением в чате."
+    },
+    {
+      "name": "Iris Shaders",
+      "source": "modrinth",
+      "project": "YL57xq9U",
+      "versionId": "fDpuVzVr",
+      "sha512": "b009a07ecbdf3eb510b4acacbb435e058406ddbabcc4f1a5efeacad154cd26777474dcf4a2b5a3a92644b150f047977ada5687a9d9172132fbe6d3d036961b7e",
+      "optional": true,
+      "description": "Шейдеры. Нужна видеокарта помощнее, сами шейдерпаки ставятся отдельно."
     }
   ]
 }
